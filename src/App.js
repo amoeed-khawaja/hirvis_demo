@@ -1,24 +1,84 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+import Layout from "./components/Layout";
+import JobList from "./components/JobList";
+import JobForm from "./components/JobForm";
+import JobDetails from "./components/JobDetails";
+import {
+  jobs as initialJobs,
+  candidates as initialCandidates,
+} from "./dummyData";
 
 function App() {
+  const [jobs, setJobs] = useState(initialJobs);
+  const [candidates, setCandidates] = useState(initialCandidates);
+
+  // Add job handler
+  const handleAddJob = (job) => {
+    const newJob = { ...job, id: Date.now().toString() };
+    setJobs([...jobs, newJob]);
+    setCandidates({ ...candidates, [newJob.id]: [] });
+  };
+
+  // Upload CVs handler (dummy, just adds dummy candidates)
+  const handleUploadCVs = (jobId, files) => {
+    const dummy = files.map((f, i) => ({
+      name: `Candidate ${i + 1}`,
+      email: `candidate${i + 1}@mail.com`,
+      phone: "555-0000",
+      score: Math.floor(Math.random() * 10) + 1,
+      experience: Math.floor(Math.random() * 8) + 1,
+      education: "B.Sc. Example",
+      resumeUrl: "#",
+    }));
+    setCandidates((prev) => ({
+      ...prev,
+      [jobId]: [...(prev[jobId] || []), ...dummy],
+    }));
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Router>
+      <Layout>
+        <Routes>
+          <Route path="/" element={<JobList jobs={jobs} />} />
+          <Route path="/add" element={<JobForm onAddJob={handleAddJob} />} />
+          <Route
+            path="/job/:id"
+            element={
+              <JobDetailsWrapper
+                jobs={jobs}
+                candidates={candidates}
+                onUploadCVs={handleUploadCVs}
+              />
+            }
+          />
+        </Routes>
+      </Layout>
+    </Router>
+  );
+}
+
+function JobDetailsWrapper({ jobs, candidates, onUploadCVs }) {
+  const { id } = useParams();
+  const [filters, setFilters] = useState({ experience: "", score: "" });
+  const job = jobs.find((j) => j.id === id);
+  const jobCandidates = candidates[id] || [];
+  const handleUpload = (files) => onUploadCVs(id, files);
+  return (
+    <JobDetails
+      job={job}
+      candidates={jobCandidates}
+      onUploadCVs={handleUpload}
+      filters={filters}
+      setFilters={setFilters}
+    />
   );
 }
 

@@ -1,70 +1,48 @@
-# Getting Started with Create React App
+# HR Dashboard
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A minimalist, elegant HR dashboard for managing job posts and candidate resumes. Built with React, React Router, and styled-components.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **Add New Job**: Create job posts with title, location, salary range, and description.
+- **Active Job Posts**: View all active jobs on the home screen.
+- **Job Details**: See job info, upload candidate CVs (PDF, multiple), and view a table of parsed candidate data.
+- **Candidate Table**: Filter candidates by experience and score. Open resumes directly from the table.
+- **Minimalist Design**: Inspired by [Five Pack Creative](https://fivepackcreative.com/), clean and modern.
 
-### `npm start`
+## Getting Started
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+1. **Clone the repository**
+   ```sh
+   git clone https://github.com/amoeed-khawaja/hr-dashboard-automated.git
+   cd hr-dashboard-automated
+   ```
+2. **Install dependencies**
+   ```sh
+   npm install
+   ```
+3. **Run the app**
+   ```sh
+   npm start
+   ```
+   The app will open at [http://localhost:3000](http://localhost:3000).
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Project Structure
 
-### `npm test`
+- `src/components/` — Main UI components
+- `src/dummyData.js` — Dummy jobs and candidates
+- `src/theme.js` — Theme variables
+- `src/App.js` — Routing and state
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## PDF Resume Parsing
 
-### `npm run build`
+- Uses [pdfjs-dist](https://www.npmjs.com/package/pdfjs-dist) to extract text from uploaded PDF resumes in the browser.
+- If you need to use a Python or cloud-based parser, see the comments in the code for integration points.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+## Deployment
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+You can deploy this app to Vercel, Netlify, or any static hosting provider. For GitHub Pages, see [Create React App deployment docs](https://create-react-app.dev/docs/deployment/).
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## License
 
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+MIT
