@@ -5,15 +5,20 @@ const FormContainer = styled.div`
   max-width: 600px;
   margin: 40px auto;
   padding: 32px;
-  background: #fff;
+  background: ${({ theme }) => theme.colors.card};
   border-radius: 16px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+`;
+const FormTitle = styled.h2`
+  color: ${({ theme }) => (theme.colors.mode === "dark" ? "#fff" : "#222")};
 `;
 const Input = styled.input`
   width: 100%;
   padding: 10px;
   margin-bottom: 18px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  background: ${({ theme }) => theme.colors.background};
+  color: ${({ theme }) => theme.colors.text};
   border-radius: 6px;
   font-size: 1rem;
 `;
@@ -22,12 +27,14 @@ const TextArea = styled.textarea`
   padding: 10px;
   min-height: 80px;
   margin-bottom: 18px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  background: ${({ theme }) => theme.colors.background};
+  color: ${({ theme }) => theme.colors.text};
   border-radius: 6px;
   font-size: 1rem;
 `;
 const Button = styled.button`
-  background: #1a73e8;
+  background: ${({ theme }) => theme.colors.primary};
   color: #fff;
   padding: 10px 24px;
   border: none;
@@ -63,7 +70,7 @@ const JobForm = ({ onAddJob }) => {
 
   return (
     <FormContainer>
-      <h2>Add New Job</h2>
+      <FormTitle>Add New Job</FormTitle>
       <form onSubmit={handleSubmit}>
         <Input
           name="title"

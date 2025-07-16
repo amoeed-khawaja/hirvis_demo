@@ -11,14 +11,15 @@ const DetailsContainer = styled.div`
   max-width: 800px;
   margin: 40px auto;
   padding: 32px;
-  background: #fff;
+  background: ${({ theme }) => theme.colors.card};
   border-radius: 16px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+  color: ${({ theme }) => theme.colors.text};
 `;
 const UploadSection = styled.div`
   margin: 32px 0 24px 0;
   padding: 24px;
-  background: #f7f8fa;
+  background: ${({ theme }) => theme.colors.background};
   border-radius: 10px;
   text-align: center;
 `;
@@ -27,7 +28,7 @@ const FileInput = styled.input`
 `;
 const UploadButton = styled.label`
   display: inline-block;
-  background: #1a73e8;
+  background: ${({ theme }) => theme.colors.primary};
   color: #fff;
   padding: 10px 24px;
   border-radius: 8px;

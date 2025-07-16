@@ -1,9 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
-  useNavigate,
   useParams,
 } from "react-router-dom";
 import Layout from "./components/Layout";
@@ -14,10 +13,22 @@ import {
   jobs as initialJobs,
   candidates as initialCandidates,
 } from "./dummyData";
+import { ThemeProvider } from "styled-components";
+import { lightTheme, darkTheme } from "./theme";
+import "./App.css";
 
 function App() {
   const [jobs, setJobs] = useState(initialJobs);
   const [candidates, setCandidates] = useState(initialCandidates);
+  const [theme, setTheme] = useState(
+    () => localStorage.getItem("theme") || "light"
+  );
+
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
 
   // Add job handler
   const handleAddJob = (job) => {
@@ -44,24 +55,26 @@ function App() {
   };
 
   return (
-    <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<JobList jobs={jobs} />} />
-          <Route path="/add" element={<JobForm onAddJob={handleAddJob} />} />
-          <Route
-            path="/job/:id"
-            element={
-              <JobDetailsWrapper
-                jobs={jobs}
-                candidates={candidates}
-                onUploadCVs={handleUploadCVs}
-              />
-            }
-          />
-        </Routes>
-      </Layout>
-    </Router>
+    <ThemeProvider theme={theme === "light" ? lightTheme : darkTheme}>
+      <Router>
+        <Layout theme={theme} toggleTheme={toggleTheme}>
+          <Routes>
+            <Route path="/" element={<JobList jobs={jobs} />} />
+            <Route path="/add" element={<JobForm onAddJob={handleAddJob} />} />
+            <Route
+              path="/job/:id"
+              element={
+                <JobDetailsWrapper
+                  jobs={jobs}
+                  candidates={candidates}
+                  onUploadCVs={handleUploadCVs}
+                />
+              }
+            />
+          </Routes>
+        </Layout>
+      </Router>
+    </ThemeProvider>
   );
 }
 
