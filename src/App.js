@@ -68,6 +68,7 @@ function App() {
                   jobs={jobs}
                   candidates={candidates}
                   onUploadCVs={handleUploadCVs}
+                  setCandidates={setCandidates}
                 />
               }
             />
@@ -78,7 +79,7 @@ function App() {
   );
 }
 
-function JobDetailsWrapper({ jobs, candidates, onUploadCVs }) {
+function JobDetailsWrapper({ jobs, candidates, onUploadCVs, setCandidates }) {
   const { id } = useParams();
   const [filters, setFilters] = useState({ experience: "", score: "" });
   const job = jobs.find((j) => j.id === id);
@@ -91,6 +92,7 @@ function JobDetailsWrapper({ jobs, candidates, onUploadCVs }) {
       onUploadCVs={handleUpload}
       filters={filters}
       setFilters={setFilters}
+      setCandidates={setCandidates}
     />
   );
 }

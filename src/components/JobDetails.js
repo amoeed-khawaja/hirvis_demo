@@ -1,8 +1,9 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import styled from "styled-components";
 import CandidateTable from "./CandidateTable";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import { GlobalWorkerOptions } from "pdfjs-dist/build/pdf";
+import { screenResume } from "../api";
 
 // Set workerSrc to the public folder for compatibility with Create React App
 GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.js`;
@@ -38,6 +39,22 @@ const UploadButton = styled.label`
   transition: background 0.2s;
   &:hover {
     background: #155ab6;
+  }
+`;
+
+const TestButton = styled.button`
+  background: #28a745;
+  color: #fff;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 8px;
+  margin-left: 8px;
+  transition: background 0.2s;
+  &:hover {
+    background: #218838;
   }
 `;
 
@@ -148,8 +165,32 @@ function parseAndFormatResumeText(text) {
   return output;
 }
 
-const JobDetails = ({ job, candidates, onUploadCVs, filters, setFilters }) => {
+const JobDetails = ({
+  job,
+  candidates,
+  onUploadCVs,
+  filters,
+  setFilters,
+  setCandidates,
+}) => {
   const fileInputRef = useRef();
+  const [lastExtractedText, setLastExtractedText] = useState("");
+
+  function parseGroqCandidateString(str) {
+    const [name, email, phone, score, experience, education, degree, notes] =
+      str.split("|").map((s) => s.trim());
+    return {
+      name,
+      email,
+      phone,
+      score,
+      experience,
+      education,
+      degree,
+      notes,
+      resumeUrl: "#",
+    };
+  }
 
   if (!job) return <DetailsContainer>Job not found.</DetailsContainer>;
 
@@ -160,11 +201,30 @@ const JobDetails = ({ job, candidates, onUploadCVs, filters, setFilters }) => {
     if (files.length) {
       for (const file of files) {
         const text = await extractTextFromPDF(file);
+        setLastExtractedText(text);
         console.log(`Extracted text from ${file.name}:\n`, text);
       }
       onUploadCVs(files);
     }
     fileInputRef.current.value = "";
+  };
+
+  const handleTestResumeScreening = async () => {
+    if (!lastExtractedText) {
+      alert("Please upload a resume first.");
+      return;
+    }
+    try {
+      const result = await screenResume(job, lastExtractedText);
+      console.log("Groq API Content:", result);
+      const newCandidate = parseGroqCandidateString(result);
+      setCandidates((prev) => ({
+        ...prev,
+        [job.id]: [...(prev[job.id] || []), newCandidate],
+      }));
+    } catch (error) {
+      console.error("Resume screening failed:", error);
+    }
   };
 
   return (
@@ -187,6 +247,9 @@ const JobDetails = ({ job, candidates, onUploadCVs, filters, setFilters }) => {
           onChange={handleFileChange}
         />
         <UploadButton htmlFor="cv-upload">Upload CVs</UploadButton>
+        <TestButton onClick={handleTestResumeScreening}>
+          Test Resume Screening
+        </TestButton>
       </UploadSection>
       <CandidateTable
         candidates={candidates}

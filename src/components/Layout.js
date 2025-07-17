@@ -1,6 +1,7 @@
 import React from "react";
 import styled from "styled-components";
 import { Link } from "react-router-dom";
+import { getGroqResponse } from "../api";
 
 const Wrapper = styled.div`
   min-height: 100vh;
@@ -53,7 +54,7 @@ const ToggleIcon = styled.span`
 const ToggleSlider = styled.span`
   position: absolute;
   top: 2px;
-  left: ${({ themeName }) => (themeName === "dark" ? "30px" : "2px")};
+  left: ${({ $themeName }) => ($themeName === "dark" ? "30px" : "2px")};
   width: 26px;
   height: 26px;
   background: ${({ theme }) => theme.colors.primary};
@@ -62,10 +63,44 @@ const ToggleSlider = styled.span`
   z-index: 1;
 `;
 
+const handleGroqTest = async () => {
+  const userInput = window.prompt("Enter your job and candidate details:");
+  if (!userInput) return;
+  const messages = [
+    {
+      role: "system",
+      content:
+        "You are an intelligent resume screening assistant. You will receive two inputs:\n\nExtracted resume text, including name, contact, education, experience, and other relevant details.\n\nJob title and job description, outlining the employer's requirements.\n\nYour task is to analyze the candidate's resume in the context of the job description and return a single-row response formatted to match an Excel sheet, with the following exact column order:\n\nName | Email | Phone | Score (rate relevance to the job from 0 to 10 based on experience, skills, and alignment with the job description) | Experience (in relevant field only, summarized in years ) | Education (only the highest level or most relevant to the role e.g. bachelors ) | Degree( e.g. computer science) |  Remarks (brief comments, such as strengths, concerns, or missing qualifications)\n\nKeep your output concise and accurate, suitable for direct insertion into an Excel row. Do not add bullet points, extra text, or formatting beyond the required columns.",
+    },
+    {
+      role: "user",
+      content: userInput,
+    },
+  ];
+  try {
+    const data = await getGroqResponse(messages);
+    alert(JSON.stringify(data));
+  } catch (err) {
+    alert("Error: " + err.message);
+  }
+};
+
 const Layout = ({ children, theme, toggleTheme }) => (
   <Wrapper>
     <Header>
       <Title to="/">HR Dashboard</Title>
+      <button
+        onClick={handleGroqTest}
+        style={{
+          marginRight: 16,
+          padding: "8px 16px",
+          borderRadius: 6,
+          border: "1px solid #ccc",
+          cursor: "pointer",
+        }}
+      >
+        Test Groq API
+      </button>
       <TogglePill onClick={toggleTheme} aria-label="Toggle dark mode">
         <ToggleIcon>
           {/* Sun icon */}
@@ -80,7 +115,7 @@ const Layout = ({ children, theme, toggleTheme }) => (
             <path d="M21 12.79A9 9 0 0111.21 3a1 1 0 00-1.09 1.32A7 7 0 0012 21a7 7 0 009.68-8.7 1 1 0 00-1.32-1.09z" />
           </svg>
         </ToggleIcon>
-        <ToggleSlider themeName={theme} />
+        <ToggleSlider $themeName={theme} />
       </TogglePill>
     </Header>
     {children}

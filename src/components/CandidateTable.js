@@ -95,12 +95,13 @@ const CandidateTable = ({ candidates, filters, setFilters }) => {
             <Th>Experience</Th>
             <Th>Education</Th>
             <Th>Resume</Th>
+            <Th>Notes</Th>
           </tr>
         </thead>
         <tbody>
           {filtered.length === 0 ? (
             <tr>
-              <Td colSpan="7" style={{ textAlign: "center", color: "#888" }}>
+              <Td colSpan="8" style={{ textAlign: "center", color: "#888" }}>
                 No candidates found.
               </Td>
             </tr>
@@ -122,6 +123,7 @@ const CandidateTable = ({ candidates, filters, setFilters }) => {
                     Open
                   </a>
                 </Td>
+                <Td>{c.notes || "-"}</Td>
               </tr>
             ))
           )}
