@@ -91,7 +91,7 @@ function parseAndFormatResumeText(text) {
     institute = "",
     gradYear = "";
   if (educationSection) {
-    // Try to extract degree (e.g., B.Sc., M.Sc., Bachelor, Master, etc.)
+    // Try to extract degree (e.g., B.Sc., Bachelor, Master, etc.)
     const degreeMatch = educationSection[1].match(
       /(B\.? ?Sc\.?|M\.? ?Sc\.?|Bachelor|Master|PhD|Associate|Diploma|[A-Z][a-z]+\sDegree)/i
     );
