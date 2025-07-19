@@ -9,26 +9,19 @@ import Layout from "./components/Layout";
 import JobList from "./components/JobList";
 import JobForm from "./components/JobForm";
 import JobDetails from "./components/JobDetails";
+import Dashboard from "./components/Dashboard";
+import ActiveJobs from "./components/ActiveJobs";
 import {
   jobs as initialJobs,
   candidates as initialCandidates,
 } from "./dummyData";
 import { ThemeProvider } from "styled-components";
-import { lightTheme, darkTheme } from "./theme";
+import { theme } from "./theme";
 import "./App.css";
 
 function App() {
   const [jobs, setJobs] = useState(initialJobs);
   const [candidates, setCandidates] = useState(initialCandidates);
-  const [theme, setTheme] = useState(
-    () => localStorage.getItem("theme") || "light"
-  );
-
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => setTheme(theme === "light" ? "dark" : "light");
 
   // Add job handler
   const handleAddJob = (job) => {
@@ -55,11 +48,36 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={theme === "light" ? lightTheme : darkTheme}>
+    <ThemeProvider theme={theme}>
       <Router>
-        <Layout theme={theme} toggleTheme={toggleTheme}>
+        <Layout>
           <Routes>
-            <Route path="/" element={<JobList jobs={jobs} />} />
+            <Route path="/" element={<Dashboard />} />
+            <Route
+              path="/candidates"
+              element={
+                <div style={{ color: "#fff", padding: "32px" }}>
+                  Candidates Page (Coming Soon)
+                </div>
+              }
+            />
+            <Route path="/jobs" element={<ActiveJobs />} />
+            <Route
+              path="/settings"
+              element={
+                <div style={{ color: "#fff", padding: "32px" }}>
+                  Settings Page (Coming Soon)
+                </div>
+              }
+            />
+            <Route
+              path="/billings"
+              element={
+                <div style={{ color: "#fff", padding: "32px" }}>
+                  Billings Page (Coming Soon)
+                </div>
+              }
+            />
             <Route path="/add" element={<JobForm onAddJob={handleAddJob} />} />
             <Route
               path="/job/:id"
