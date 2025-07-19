@@ -12,14 +12,14 @@ export async function getGroqResponse(messages) {
 
 export async function screenResume(job, candidateResumeText) {
   const jobInfo = `Job Title: ${job.title}
-Experience: ${job.salaryRange}
 Location: ${job.location}
-Job Type: Full-time
+Job Type: ${job.type}
+Salary Range: ${job.salaryRange}
 
-Job Summary:
+Job Description:
 ${job.description}`;
 
-  const candidateInfo = `candidate details:
+  const candidateInfo = `Candidate Details:
 ${candidateResumeText}`;
 
   const combinedInput = `${jobInfo}
@@ -39,6 +39,11 @@ ${candidateInfo}`;
   ];
 
   try {
+    console.log("\n📤 Sending to Groq API:");
+    console.log("=".repeat(80));
+    console.log(combinedInput);
+    console.log("=".repeat(80));
+
     const data = await getGroqResponse(messages);
     const content = data.choices?.[0]?.message?.content || "";
     console.log("Groq API Content:", content);

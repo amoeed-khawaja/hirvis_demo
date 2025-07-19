@@ -1,6 +1,69 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import styled from "styled-components";
+import * as pdfjsLib from "pdfjs-dist/build/pdf";
+import { GlobalWorkerOptions } from "pdfjs-dist/build/pdf";
+import { screenResume } from "../api";
+
+// Set workerSrc to the public folder for compatibility with Create React App
+GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.js`;
+
+// Function to extract text from PDF
+async function extractTextFromPDF(file) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = "";
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map((item) => item.str).join(" ") + "\n";
+    }
+
+    return text;
+  } catch (error) {
+    console.error("Error extracting text from PDF:", error);
+    throw error;
+  }
+}
+
+// Function to parse Groq API response
+function parseGroqCandidateString(str) {
+  try {
+    const parts = str.split("|").map((s) => s.trim());
+    if (parts.length >= 8) {
+      return {
+        name: parts[0] || "N/A",
+        email: parts[1] || "N/A",
+        phone: parts[2] || "N/A",
+        score: parseInt(parts[3]) || 0,
+        experience: parts[4] || "N/A",
+        education: parts[5] || "N/A",
+        degree: parts[6] || "N/A",
+        notes: parts[7] || "N/A",
+        resume: "Uploaded PDF",
+      };
+    } else {
+      console.warn("Invalid Groq response format:", str);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error parsing Groq response:", error);
+    return null;
+  }
+}
+
+// Function to format job information for Groq API
+function formatJobForGroq(job) {
+  return {
+    title: job.position,
+    description: job.jobDescription,
+    location: job.location,
+    type: job.type,
+    salaryRange: "Competitive", // Default since not in mock data
+  };
+}
 
 const Container = styled.div`
   padding: 40px 32px 32px 32px;
@@ -201,6 +264,12 @@ const ErrorStatus = styled(UploadStatus)`
   color: #ab2e3c;
 `;
 
+const InfoStatus = styled(UploadStatus)`
+  background: rgba(13, 110, 253, 0.1);
+  border: 1px solid rgba(13, 110, 253, 0.3);
+  color: #0d6efd;
+`;
+
 const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -264,11 +333,14 @@ const Applicants = () => {
   const [scoreFilter, setScoreFilter] = useState("");
   const [uploadStatus, setUploadStatus] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [extractedTexts, setExtractedTexts] = useState({});
+  const [isProcessing, setIsProcessing] = useState(false);
   const fileInputRef = React.useRef();
 
   useEffect(() => {
     // In a real app, you would fetch job and applicants data from API
     // For now, we'll use mock data
+    console.log("Setting up mock job and applicants data...");
     const mockJob = {
       id: jobId,
       position: "Senior React Developer",
@@ -312,7 +384,8 @@ Nice to have:
         phone: "+1 (555) 123-4567",
         score: 9,
         experience: "6 years",
-        education: "MSc Computer Science",
+        education: "MSc",
+        degree: "Computer Science",
         resume: "sarah_johnson_resume.pdf",
         notes: "Excellent React skills, strong portfolio, great communication",
       },
@@ -323,7 +396,8 @@ Nice to have:
         phone: "+1 (555) 234-5678",
         score: 7,
         experience: "4 years",
-        education: "BSc Software Engineering",
+        education: "BSc",
+        degree: "Software Engineering",
         resume: "michael_chen_resume.pdf",
         notes: "Good technical skills, needs improvement in system design",
       },
@@ -334,7 +408,8 @@ Nice to have:
         phone: "+1 (555) 345-6789",
         score: 8,
         experience: "5 years",
-        education: "BSc Computer Science",
+        education: "BSc",
+        degree: "Computer Science",
         resume: "emily_rodriguez_resume.pdf",
         notes: "Strong problem-solving skills, good team player",
       },
@@ -345,7 +420,8 @@ Nice to have:
         phone: "+1 (555) 456-7890",
         score: 6,
         experience: "3 years",
-        education: "BSc Information Technology",
+        education: "BSc",
+        degree: "Information Technology",
         resume: "david_kim_resume.pdf",
         notes: "Junior level, needs mentoring, shows potential",
       },
@@ -356,7 +432,8 @@ Nice to have:
         phone: "+1 (555) 567-8901",
         score: 9,
         experience: "7 years",
-        education: "MSc Computer Science",
+        education: "MSc",
+        degree: "Computer Science",
         resume: "lisa_thompson_resume.pdf",
         notes: "Senior level, excellent leadership skills, perfect fit",
       },
@@ -401,7 +478,7 @@ Nice to have:
     navigate("/jobs");
   };
 
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
     const pdfFiles = files.filter((file) => file.type === "application/pdf");
     const nonPdfFiles = files.filter((file) => file.type !== "application/pdf");
@@ -422,6 +499,103 @@ Nice to have:
       return;
     }
 
+    // Extract text from each PDF and print to console
+    const newExtractedTexts = {};
+    for (const file of pdfFiles) {
+      try {
+        console.log(`\n=== EXTRACTING TEXT FROM: ${file.name} ===`);
+        const extractedText = await extractTextFromPDF(file);
+
+        // Store extracted text in state
+        newExtractedTexts[file.name] = extractedText;
+
+        console.log(`\n📄 PDF Text Content for "${file.name}":`);
+        console.log("=".repeat(80));
+        console.log(extractedText);
+        console.log("=".repeat(80));
+        console.log(
+          `\n✅ Successfully extracted ${extractedText.length} characters from "${file.name}"`
+        );
+      } catch (error) {
+        console.error(`❌ Failed to extract text from "${file.name}":`, error);
+        setUploadStatus({
+          type: "error",
+          message: `Failed to extract text from ${file.name}: ${error.message}`,
+        });
+        return;
+      }
+    }
+
+    // Update extracted texts state
+    setExtractedTexts((prev) => ({ ...prev, ...newExtractedTexts }));
+
+    // Process extracted text through Groq API
+    setIsProcessing(true);
+    setUploadStatus({
+      type: "info",
+      message: "Processing resumes through AI...",
+    });
+
+    try {
+      const newCandidates = [];
+
+      for (const file of pdfFiles) {
+        const extractedText = newExtractedTexts[file.name];
+        if (extractedText) {
+          console.log(`\n🤖 Processing "${file.name}" through Groq API...`);
+
+          // Format job information for Groq API
+          const formattedJob = formatJobForGroq(job);
+          console.log(`\n📋 Job Information being sent to Groq API:`);
+          console.log(`Job Title: ${formattedJob.title}`);
+          console.log(
+            `Job Description: ${formattedJob.description.substring(0, 200)}...`
+          );
+          console.log(`Location: ${formattedJob.location}`);
+          console.log(`Type: ${formattedJob.type}`);
+
+          // Call Groq API to screen the resume
+          const groqResponse = await screenResume(formattedJob, extractedText);
+          console.log(`\n📊 Groq API Response for "${file.name}":`);
+          console.log(groqResponse);
+
+          // Parse the response and add to candidates
+          const candidate = parseGroqCandidateString(groqResponse);
+          if (candidate) {
+            candidate.id = Date.now() + Math.random();
+            candidate.resume = file.name;
+            newCandidates.push(candidate);
+            console.log(`\n✅ Added candidate from "${file.name}":`, candidate);
+          } else {
+            console.warn(`❌ Failed to parse candidate from "${file.name}"`);
+          }
+        }
+      }
+
+      // Add new candidates to the table
+      if (newCandidates.length > 0) {
+        setApplicants((prev) => [...prev, ...newCandidates]);
+        setUploadStatus({
+          type: "success",
+          message: `Successfully processed ${newCandidates.length} resume(s) and added ${newCandidates.length} candidate(s) to the table.`,
+        });
+      } else {
+        setUploadStatus({
+          type: "error",
+          message:
+            "Failed to process any resumes. Please check the console for details.",
+        });
+      }
+    } catch (error) {
+      console.error("Error processing resumes through Groq API:", error);
+      setUploadStatus({
+        type: "error",
+        message: `Error processing resumes: ${error.message}`,
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+
     const newFiles = pdfFiles.map((file) => ({
       id: Date.now() + Math.random(),
       name: file.name,
@@ -430,10 +604,6 @@ Nice to have:
     }));
 
     setUploadedFiles((prev) => [...prev, ...newFiles]);
-    setUploadStatus({
-      type: "success",
-      message: `Successfully uploaded ${pdfFiles.length} PDF file(s).`,
-    });
 
     // Clear the file input
     event.target.value = "";
@@ -507,9 +677,9 @@ Nice to have:
 
             <UploadButton
               onClick={triggerFileUpload}
-              disabled={uploadedFiles.length >= 10}
+              disabled={uploadedFiles.length >= 10 || isProcessing}
             >
-              📄 Upload Resume
+              {isProcessing ? "⏳ Processing..." : "📄 Upload Resume"}
             </UploadButton>
           </div>
         </TableHeader>
@@ -525,8 +695,10 @@ Nice to have:
         {uploadStatus &&
           (uploadStatus.type === "success" ? (
             <SuccessStatus>✅ {uploadStatus.message}</SuccessStatus>
-          ) : (
+          ) : uploadStatus.type === "error" ? (
             <ErrorStatus>❌ {uploadStatus.message}</ErrorStatus>
+          ) : (
+            <InfoStatus>⏳ {uploadStatus.message}</InfoStatus>
           ))}
 
         {uploadedFiles.length > 0 && (
@@ -553,13 +725,19 @@ Nice to have:
                 <span
                   key={file.id}
                   style={{
-                    background: "#374151",
+                    background: extractedTexts[file.name]
+                      ? "#198754"
+                      : "#374151",
                     color: "#FFFFFF",
                     padding: "4px 8px",
                     borderRadius: "4px",
                     fontSize: "0.8rem",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
                   }}
                 >
+                  {extractedTexts[file.name] && "✅"}
                   {file.name}
                 </span>
               ))}
@@ -576,6 +754,7 @@ Nice to have:
               <Th>Score</Th>
               <Th>Experience</Th>
               <Th>Education</Th>
+              <Th>Degree</Th>
               <Th>Resume</Th>
               <Th>Notes</Th>
             </tr>
@@ -583,7 +762,7 @@ Nice to have:
           <tbody>
             {filteredApplicants.length === 0 ? (
               <tr>
-                <Td colSpan="8">
+                <Td colSpan="9">
                   <EmptyState>
                     {applicants.length === 0
                       ? "No applicants found"
@@ -604,9 +783,12 @@ Nice to have:
                   </Td>
                   <Td>{applicant.experience}</Td>
                   <Td>{applicant.education}</Td>
+                  <Td>{applicant.degree || "N/A"}</Td>
                   <Td>
                     <ResumeLink href="#" onClick={(e) => e.preventDefault()}>
-                      View Resume
+                      {applicant.resume === "Uploaded PDF"
+                        ? "View PDF"
+                        : "View Resume"}
                     </ResumeLink>
                   </Td>
                   <Td style={{ maxWidth: "200px" }}>{applicant.notes}</Td>
