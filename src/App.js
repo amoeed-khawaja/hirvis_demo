@@ -11,6 +11,7 @@ import JobForm from "./components/JobForm";
 import JobDetails from "./components/JobDetails";
 import Dashboard from "./components/Dashboard";
 import ActiveJobs from "./components/ActiveJobs";
+import Applicants from "./components/Applicants";
 import {
   jobs as initialJobs,
   candidates as initialCandidates,
@@ -62,6 +63,7 @@ function App() {
               }
             />
             <Route path="/jobs" element={<ActiveJobs />} />
+            <Route path="/jobs/:jobId/applicants" element={<Applicants />} />
             <Route
               path="/settings"
               element={

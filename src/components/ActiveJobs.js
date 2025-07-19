@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { useNavigate } from "react-router-dom";
 import AddJobModal from "./AddJobModal";
 
 const Container = styled.div`
@@ -221,8 +222,55 @@ const DangerButton = styled(Button)`
 `;
 
 const ActiveJobs = () => {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [jobs, setJobs] = useState([]);
+  const [jobs, setJobs] = useState([
+    {
+      id: 1,
+      position: "Senior React Developer",
+      location: "New York, NY",
+      type: "Full-time",
+      postedDate: "2024-01-15",
+      applications: 5,
+      jobTitle: "Senior React Developer",
+      jobLocation: "New York, NY",
+      workplaceType: "Full-time",
+      jobDescription:
+        "We are looking for a Senior React Developer to join our dynamic team. You will be responsible for building and maintaining high-quality web applications using React.js and related technologies. Key responsibilities include developing new user-facing features, building reusable code and libraries, ensuring technical feasibility of UI/UX designs, optimizing applications for maximum speed and scalability, collaborating with team members and stakeholders, and mentoring junior developers.",
+      jobDuration: 30,
+      postToLinkedIn: true,
+      requiredSkills: [
+        "React",
+        "JavaScript",
+        "TypeScript",
+        "Node.js",
+        "Redux",
+        "Git",
+      ],
+    },
+    {
+      id: 2,
+      position: "UX/UI Designer",
+      location: "Remote",
+      type: "Contract",
+      postedDate: "2024-01-20",
+      applications: 3,
+      jobTitle: "UX/UI Designer",
+      jobLocation: "Remote",
+      workplaceType: "Contract",
+      jobDescription:
+        "We're seeking a talented UX/UI Designer to create beautiful and functional user experiences. You'll work closely with our product and development teams to design intuitive interfaces that delight our users. Responsibilities include conducting user research, creating wireframes and prototypes, designing high-fidelity mockups, collaborating with developers, and maintaining design systems.",
+      jobDuration: 60,
+      postToLinkedIn: false,
+      requiredSkills: [
+        "Figma",
+        "Adobe Creative Suite",
+        "User Research",
+        "Prototyping",
+        "Design Systems",
+      ],
+    },
+  ]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -278,6 +326,11 @@ const ActiveJobs = () => {
     );
     setIsEditModalOpen(false);
     setSelectedJob(null);
+  };
+
+  const handleViewApplicants = () => {
+    setIsViewModalOpen(false);
+    navigate(`/jobs/${selectedJob.id}/applicants`);
   };
 
   return (
@@ -410,13 +463,7 @@ const ActiveJobs = () => {
               <SecondaryButton onClick={() => setIsViewModalOpen(false)}>
                 Close
               </SecondaryButton>
-              <PrimaryButton
-                onClick={() => {
-                  setIsViewModalOpen(false);
-                  // TODO: Navigate to applicants view
-                  alert("View Applicants functionality coming soon!");
-                }}
-              >
+              <PrimaryButton onClick={handleViewApplicants}>
                 View Applicants
               </PrimaryButton>
             </ModalFooter>
@@ -449,7 +496,7 @@ const ActiveJobs = () => {
                 Are you sure you want to delete the job "{selectedJob.position}
                 "?
               </p>
-              <p style={{ color: "#9ca3af", fontSize: "0.9rem" }}>
+              <p style={{ color: "#9CA3AF", fontSize: "0.9rem" }}>
                 This action cannot be undone.
               </p>
             </ModalBody>
