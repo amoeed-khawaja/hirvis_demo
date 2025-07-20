@@ -12,6 +12,9 @@ import JobDetails from "./components/JobDetails";
 import Dashboard from "./components/Dashboard";
 import ActiveJobs from "./components/ActiveJobs";
 import Applicants from "./components/Applicants";
+import SignUp from "./components/SignUp";
+import Login from "./components/Login";
+import ProtectedRoute from "./components/ProtectedRoute";
 import {
   jobs as initialJobs,
   candidates as initialCandidates,
@@ -51,49 +54,66 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route
-              path="/candidates"
-              element={
-                <div style={{ color: "#fff", padding: "32px" }}>
-                  Candidates Page (Coming Soon)
-                </div>
-              }
-            />
-            <Route path="/jobs" element={<ActiveJobs />} />
-            <Route path="/jobs/:jobId/applicants" element={<Applicants />} />
-            <Route
-              path="/settings"
-              element={
-                <div style={{ color: "#fff", padding: "32px" }}>
-                  Settings Page (Coming Soon)
-                </div>
-              }
-            />
-            <Route
-              path="/billings"
-              element={
-                <div style={{ color: "#fff", padding: "32px" }}>
-                  Billings Page (Coming Soon)
-                </div>
-              }
-            />
-            <Route path="/add" element={<JobForm onAddJob={handleAddJob} />} />
-            <Route
-              path="/job/:id"
-              element={
-                <JobDetailsWrapper
-                  jobs={jobs}
-                  candidates={candidates}
-                  onUploadCVs={handleUploadCVs}
-                  setCandidates={setCandidates}
-                />
-              }
-            />
-          </Routes>
-        </Layout>
+        <Routes>
+          <Route path="/" element={<SignUp />} />
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/*"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Routes>
+                    <Route path="dashboard" element={<Dashboard />} />
+                    <Route
+                      path="candidates"
+                      element={
+                        <div style={{ color: "#fff", padding: "32px" }}>
+                          Candidates Page (Coming Soon)
+                        </div>
+                      }
+                    />
+                    <Route path="jobs" element={<ActiveJobs />} />
+                    <Route
+                      path="jobs/:jobId/applicants"
+                      element={<Applicants />}
+                    />
+                    <Route
+                      path="settings"
+                      element={
+                        <div style={{ color: "#fff", padding: "32px" }}>
+                          Settings Page (Coming Soon)
+                        </div>
+                      }
+                    />
+                    <Route
+                      path="billings"
+                      element={
+                        <div style={{ color: "#fff", padding: "32px" }}>
+                          Billings Page (Coming Soon)
+                        </div>
+                      }
+                    />
+                    <Route
+                      path="add"
+                      element={<JobForm onAddJob={handleAddJob} />}
+                    />
+                    <Route
+                      path="job/:id"
+                      element={
+                        <JobDetailsWrapper
+                          jobs={jobs}
+                          candidates={candidates}
+                          onUploadCVs={handleUploadCVs}
+                          setCandidates={setCandidates}
+                        />
+                      }
+                    />
+                  </Routes>
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
       </Router>
     </ThemeProvider>
   );

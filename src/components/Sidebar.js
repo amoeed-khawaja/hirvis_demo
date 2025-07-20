@@ -125,7 +125,7 @@ const Sidebar = () => {
   const navigationItems = [
     {
       section: "Main",
-      items: [{ path: "/", label: "Dashboard", icon: "📊" }],
+      items: [{ path: "/dashboard", label: "Dashboard", icon: "📊" }],
     },
     {
       section: "Recruitment",
