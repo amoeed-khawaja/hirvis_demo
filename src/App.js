@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   useParams,
+  Navigate,
 } from "react-router-dom";
 import Layout from "./components/Layout";
 import JobList from "./components/JobList";
@@ -15,6 +16,8 @@ import Applicants from "./components/Applicants";
 import SignUp from "./components/SignUp";
 import Login from "./components/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
+import TableInspector from "./components/TableInspector";
+import { inspectActiveJobsTable } from "./utils/inspectActiveJobs";
 import {
   jobs as initialJobs,
   candidates as initialCandidates,
@@ -22,10 +25,17 @@ import {
 import { ThemeProvider } from "styled-components";
 import { theme } from "./theme";
 import "./App.css";
+import Candidates from "./components/Candidates";
+import Settings from "./components/Settings";
 
 function App() {
   const [jobs, setJobs] = useState(initialJobs);
   const [candidates, setCandidates] = useState(initialCandidates);
+
+  // Inspect active_jobs table on app load
+  useEffect(() => {
+    inspectActiveJobsTable();
+  }, []);
 
   // Add job handler
   const handleAddJob = (job) => {
@@ -55,7 +65,15 @@ function App() {
     <ThemeProvider theme={theme}>
       <Router>
         <Routes>
-          <Route path="/" element={<SignUp />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Navigate to="/dashboard" replace />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/signup" element={<SignUp />} />
           <Route path="/login" element={<Login />} />
           <Route
             path="/*"
@@ -64,27 +82,13 @@ function App() {
                 <Layout>
                   <Routes>
                     <Route path="dashboard" element={<Dashboard />} />
-                    <Route
-                      path="candidates"
-                      element={
-                        <div style={{ color: "#fff", padding: "32px" }}>
-                          Candidates Page (Coming Soon)
-                        </div>
-                      }
-                    />
+                    <Route path="candidates" element={<Candidates />} />
                     <Route path="jobs" element={<ActiveJobs />} />
                     <Route
                       path="jobs/:jobId/applicants"
                       element={<Applicants />}
                     />
-                    <Route
-                      path="settings"
-                      element={
-                        <div style={{ color: "#fff", padding: "32px" }}>
-                          Settings Page (Coming Soon)
-                        </div>
-                      }
-                    />
+                    <Route path="settings" element={<Settings />} />
                     <Route
                       path="billings"
                       element={
@@ -93,6 +97,7 @@ function App() {
                         </div>
                       }
                     />
+                    <Route path="inspector" element={<TableInspector />} />
                     <Route
                       path="add"
                       element={<JobForm onAddJob={handleAddJob} />}

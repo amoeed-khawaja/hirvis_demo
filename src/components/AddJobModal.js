@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { supabase } from "../supabase";
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -391,6 +392,8 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
     requiredSkills: [],
   });
   const [newSkill, setNewSkill] = useState("");
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
   const commonSkills = [
     "React",
@@ -480,9 +483,43 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
     }
   };
 
-  const handleSubmit = () => {
+  async function postToLinkedIn(job) {
+    setStatus("");
+    setError("");
+    // 1. Get session and access token
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken =
+      session?.provider_token || session?.provider_access_token;
+    if (!accessToken)
+      throw new Error(
+        "No LinkedIn access token found. Please log in with LinkedIn."
+      );
+    // 2. Call backend proxy
+    const res = await fetch("http://localhost:5000/api/linkedin-post", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken, job }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to post to LinkedIn");
+    return true;
+  }
+
+  const handleSubmit = async () => {
     if (canCreateJob()) {
+      setStatus("");
+      setError("");
       onAddJob(formData);
+      if (formData.postToLinkedIn) {
+        try {
+          await postToLinkedIn(formData);
+          setStatus("Job posted to LinkedIn successfully!");
+        } catch (err) {
+          setError("Failed to post to LinkedIn: " + err.message);
+        }
+      }
       onClose();
       setFormData({
         jobTitle: "",
@@ -691,6 +728,12 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
         </ModalBody>
 
         <ModalFooter>
+          {status && (
+            <div style={{ color: "#198754", marginRight: 16 }}>{status}</div>
+          )}
+          {error && (
+            <div style={{ color: "#ab2e3c", marginRight: 16 }}>{error}</div>
+          )}
           {activeTab === "basic" ? (
             <PrimaryButton
               onClick={() => setActiveTab("skills")}

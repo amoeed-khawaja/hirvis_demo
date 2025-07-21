@@ -4,6 +4,17 @@ import styled from "styled-components";
 import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import { GlobalWorkerOptions } from "pdfjs-dist/build/pdf";
 import { screenResume } from "../api";
+import { supabase } from "../supabase";
+import {
+  checkTablesExist,
+  displaySetupInstructions,
+} from "../utils/databaseSetup";
+import {
+  checkRLSStatus,
+  displayFixInstructions,
+  disableRLSTemporarily,
+} from "../utils/fixRLSPolicies";
+import { getCurrentUserId } from "../utils/auth";
 
 // Set workerSrc to the public folder for compatibility with Create React App
 GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.js`;
@@ -42,7 +53,6 @@ function parseGroqCandidateString(str) {
         education: parts[5] || "N/A",
         degree: parts[6] || "N/A",
         notes: parts[7] || "N/A",
-        resume: "Uploaded PDF",
       };
     } else {
       console.warn("Invalid Groq response format:", str);
@@ -54,15 +64,13 @@ function parseGroqCandidateString(str) {
   }
 }
 
-// Function to format job information for Groq API
-function formatJobForGroq(job) {
-  return {
-    title: job.position,
-    description: job.jobDescription,
-    location: job.location,
-    type: job.type,
-    salaryRange: "Competitive", // Default since not in mock data
-  };
+// Format phone number for display
+function formatPhone(phone) {
+  if (!phone) return "-";
+  const str = String(phone).replace(/\D/g, "");
+  if (str.startsWith("92")) return "+" + str;
+  if (str.startsWith("3")) return "0" + str;
+  return phone;
 }
 
 const Container = styled.div`
@@ -154,6 +162,8 @@ const TableContainer = styled.div`
   border-radius: 16px;
   padding: 24px;
   border: 1px solid #374151;
+  overflow: auto;
+  max-width: 100%;
 `;
 
 const TableHeader = styled.div`
@@ -274,6 +284,7 @@ const Table = styled.table`
   width: 100%;
   border-collapse: collapse;
   color: #ffffff;
+  table-layout: fixed;
 `;
 
 const Th = styled.th`
@@ -291,6 +302,9 @@ const Td = styled.td`
   border-bottom: 1px solid #374151;
   color: #ffffff;
   vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 200px;
 `;
 
 const ResumeLink = styled.a`
@@ -300,6 +314,193 @@ const ResumeLink = styled.a`
 
   &:hover {
     text-decoration: underline;
+  }
+`;
+
+const ViewMoreButton = styled.button`
+  background: none;
+  border: none;
+  color: #af1763;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const NotesText = styled.div`
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-word;
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+`;
+
+const ModalContainer = styled.div`
+  background: #232837;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  border: 1px solid #374151;
+`;
+
+const ModalHeader = styled.div`
+  padding: 24px 32px 16px 32px;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const ModalTitle = styled.h2`
+  color: #ffffff;
+  margin: 0;
+  font-size: 1.5rem;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.2s;
+  &:hover {
+    color: #ffffff;
+  }
+`;
+
+const ModalBody = styled.div`
+  padding: 32px;
+  color: #ffffff;
+  line-height: 1.6;
+  white-space: pre-wrap;
+`;
+
+const ModalFooter = styled.div`
+  padding: 24px 32px;
+  border-top: 1px solid #374151;
+  display: flex;
+  justify-content: flex-end;
+`;
+
+const Button = styled.button`
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: none;
+  background: #374151;
+  color: #ffffff;
+  &:hover {
+    background: #4b5563;
+  }
+`;
+
+const DragDropArea = styled.div`
+  position: relative;
+  min-height: 200px;
+  border: 2px dashed ${(props) => (props.isDragOver ? "#af1763" : "#374151")};
+  border-radius: 16px;
+  background: ${(props) =>
+    props.isDragOver ? "rgba(175, 23, 99, 0.1)" : "transparent"};
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  padding: 40px 20px;
+
+  ${(props) =>
+    props.isDragOver &&
+    `
+    transform: scale(1.02);
+    box-shadow: 0 0 20px rgba(175, 23, 99, 0.3);
+  `}
+`;
+
+const DragDropContent = styled.div`
+  text-align: center;
+  color: ${(props) => (props.isDragOver ? "#af1763" : "#9ca3af")};
+  transition: color 0.3s ease;
+`;
+
+const DragDropIcon = styled.div`
+  font-size: 3rem;
+  margin-bottom: 16px;
+  transition: transform 0.3s ease;
+
+  ${(props) =>
+    props.isDragOver &&
+    `
+    transform: scale(1.1);
+  `}
+`;
+
+const DragDropText = styled.div`
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+`;
+
+const DragDropSubtext = styled.div`
+  font-size: 1rem;
+  opacity: 0.8;
+`;
+
+const FileCount = styled.div`
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #af1763;
+  color: white;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+  animation: ${(props) => (props.show ? "bounce 0.6s ease" : "none")};
+
+  @keyframes bounce {
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
+      transform: translateY(0);
+    }
+    40% {
+      transform: translateY(-10px);
+    }
+    60% {
+      transform: translateY(-5px);
+    }
   }
 `;
 
@@ -323,159 +524,334 @@ const EmptyState = styled.div`
   font-size: 1.1rem;
 `;
 
+const LoadingState = styled.div`
+  text-align: center;
+  color: #9ca3af;
+  padding: 60px 20px;
+  font-size: 1.1rem;
+`;
+
+const ErrorState = styled.div`
+  text-align: center;
+  color: #ef4444;
+  padding: 60px 20px;
+  font-size: 1.1rem;
+`;
+
+const SetupButton = styled.button`
+  background: #af1763;
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 500;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 16px;
+
+  &:hover {
+    background: #8a1250;
+  }
+`;
+
 const Applicants = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
-  const [applicants, setApplicants] = useState([]);
-  const [filteredApplicants, setFilteredApplicants] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [filteredCandidates, setFilteredCandidates] = useState([]);
   const [experienceFilter, setExperienceFilter] = useState("");
   const [scoreFilter, setScoreFilter] = useState("");
   const [uploadStatus, setUploadStatus] = useState(null);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [extractedTexts, setExtractedTexts] = useState({});
   const [isProcessing, setIsProcessing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState("");
+  const [selectedCandidateName, setSelectedCandidateName] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
   const fileInputRef = React.useRef();
 
-  useEffect(() => {
-    // In a real app, you would fetch job and applicants data from API
-    // For now, we'll use mock data
-    console.log("Setting up mock job and applicants data...");
-    const mockJob = {
-      id: jobId,
-      position: "Senior React Developer",
-      location: "New York, NY",
-      type: "Full-time",
-      jobDescription: `We are looking for a Senior React Developer to join our dynamic team. You will be responsible for building and maintaining high-quality web applications using React.js and related technologies.
+  // Fetch job details
+  const fetchJob = async () => {
+    try {
+      // Get current user ID
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setError("User not authenticated");
+        return;
+      }
 
-Key Responsibilities:
-• Develop new user-facing features using React.js
-• Build reusable code and libraries for future use
-• Ensure the technical feasibility of UI/UX designs
-• Optimize applications for maximum speed and scalability
-• Collaborate with other team members and stakeholders
-• Mentor junior developers and conduct code reviews
+      const { data, error } = await supabase
+        .from("active_jobs")
+        .select("*")
+        .eq("job_id", jobId)
+        .eq("login_user_id", currentUserId)
+        .single();
 
-Requirements:
-• 5+ years of experience with React.js and modern JavaScript
-• Strong understanding of web markup, including HTML5, CSS3
-• Experience with state management libraries (Redux, MobX, etc.)
-• Familiarity with RESTful APIs and GraphQL
-• Experience with testing frameworks (Jest, React Testing Library)
-• Knowledge of modern build tools (Webpack, Babel, etc.)
-• Understanding of cross-browser compatibility issues
-• Experience with version control systems (Git)
+      if (error) {
+        console.error("Error fetching job:", error);
+        setError(error.message);
+      } else {
+        setJob(data);
+      }
+    } catch (err) {
+      console.error("Error in fetchJob:", err);
+      setError("Failed to fetch job details");
+    }
+  };
 
-Nice to have:
-• Experience with TypeScript
-• Knowledge of server-side rendering (Next.js, Gatsby)
-• Experience with CI/CD pipelines
-• Understanding of accessibility standards
-• Experience with performance optimization techniques`,
-      postedDate: "2024-01-15",
-      applications: 12,
-    };
+  // Fetch candidates for this job with server-side filtering
+  const fetchCandidates = async (experienceFilter = "", scoreFilter = "") => {
+    try {
+      // Get current user ID
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setError("User not authenticated");
+        return;
+      }
 
-    const mockApplicants = [
-      {
-        id: 1,
-        name: "Sarah Johnson",
-        email: "sarah.johnson@email.com",
-        phone: "+1 (555) 123-4567",
-        score: 9,
-        experience: "6 years",
-        education: "MSc",
-        degree: "Computer Science",
-        resume: "sarah_johnson_resume.pdf",
-        notes: "Excellent React skills, strong portfolio, great communication",
-      },
-      {
-        id: 2,
-        name: "Michael Chen",
-        email: "michael.chen@email.com",
-        phone: "+1 (555) 234-5678",
-        score: 7,
-        experience: "4 years",
-        education: "BSc",
-        degree: "Software Engineering",
-        resume: "michael_chen_resume.pdf",
-        notes: "Good technical skills, needs improvement in system design",
-      },
-      {
-        id: 3,
-        name: "Emily Rodriguez",
-        email: "emily.rodriguez@email.com",
-        phone: "+1 (555) 345-6789",
-        score: 8,
-        experience: "5 years",
-        education: "BSc",
-        degree: "Computer Science",
-        resume: "emily_rodriguez_resume.pdf",
-        notes: "Strong problem-solving skills, good team player",
-      },
-      {
-        id: 4,
-        name: "David Kim",
-        email: "david.kim@email.com",
-        phone: "+1 (555) 456-7890",
-        score: 6,
-        experience: "3 years",
-        education: "BSc",
-        degree: "Information Technology",
-        resume: "david_kim_resume.pdf",
-        notes: "Junior level, needs mentoring, shows potential",
-      },
-      {
-        id: 5,
-        name: "Lisa Thompson",
-        email: "lisa.thompson@email.com",
-        phone: "+1 (555) 567-8901",
-        score: 9,
-        experience: "7 years",
-        education: "MSc",
-        degree: "Computer Science",
-        resume: "lisa_thompson_resume.pdf",
-        notes: "Senior level, excellent leadership skills, perfect fit",
-      },
-    ];
+      // First, get candidate IDs from active_job_candidates table (only for current user)
+      const { data: jobCandidates, error: jobCandidatesError } = await supabase
+        .from("active_job_candidates")
+        .select("candidate_id")
+        .eq("job_id", jobId)
+        .eq("login_user_id", currentUserId);
 
-    setJob(mockJob);
-    setApplicants(mockApplicants);
-    setFilteredApplicants(mockApplicants);
-  }, [jobId]);
+      if (jobCandidatesError) {
+        console.error("Error fetching job candidates:", jobCandidatesError);
+        setError(jobCandidatesError.message);
+        return;
+      }
 
-  // Filter applicants based on selected filters
-  useEffect(() => {
-    let filtered = [...applicants];
+      if (!jobCandidates || jobCandidates.length === 0) {
+        setCandidates([]);
+        setFilteredCandidates([]);
+        return;
+      }
 
-    if (experienceFilter) {
-      filtered = filtered.filter((applicant) => {
-        const experienceYears = parseInt(applicant.experience);
+      // Extract candidate IDs
+      const candidateIds = jobCandidates.map((jc) => jc.candidate_id);
+
+      // Build the query with server-side filtering
+      let query = supabase
+        .from("candidate_data")
+        .select("*")
+        .in("id", candidateIds)
+        .eq("login_user_id", currentUserId);
+
+      // Apply experience filter
+      if (experienceFilter) {
         switch (experienceFilter) {
           case "1-2":
-            return experienceYears >= 1 && experienceYears <= 2;
+            query = query.gte("Experience", 1).lte("Experience", 2);
+            break;
           case "2-3":
-            return experienceYears >= 2 && experienceYears <= 3;
+            query = query.gte("Experience", 2).lte("Experience", 3);
+            break;
           case "3-5":
-            return experienceYears >= 3 && experienceYears <= 5;
+            query = query.gte("Experience", 3).lte("Experience", 5);
+            break;
           case "5+":
-            return experienceYears >= 5;
+            query = query.gte("Experience", 5);
+            break;
           default:
-            return true;
+            break;
         }
-      });
-    }
+      }
 
-    if (scoreFilter) {
-      const minScore = parseInt(scoreFilter);
-      filtered = filtered.filter((applicant) => applicant.score >= minScore);
-    }
+      // Apply score filter
+      if (scoreFilter) {
+        const minScore = parseInt(scoreFilter);
+        query = query.gte("Score", minScore);
+      }
 
-    setFilteredApplicants(filtered);
-  }, [applicants, experienceFilter, scoreFilter]);
+      // Execute the query
+      const { data: candidateData, error: candidateDataError } = await query;
+
+      if (candidateDataError) {
+        console.error("Error fetching candidate data:", candidateDataError);
+        setError(candidateDataError.message);
+      } else {
+        setCandidates(candidateData || []);
+        setFilteredCandidates(candidateData || []);
+      }
+    } catch (err) {
+      console.error("Error in fetchCandidates:", err);
+      setError("Failed to fetch candidates");
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+
+      // Check if required tables exist
+      const tablesExist = await checkTablesExist();
+      if (!tablesExist.candidate_data || !tablesExist.active_job_candidates) {
+        console.error("❌ Required tables missing");
+        displaySetupInstructions();
+        setError(
+          "Database tables not set up. Please check console for setup instructions."
+        );
+        setLoading(false);
+        return;
+      }
+
+      // Check RLS policies
+      const rlsStatus = await checkRLSStatus();
+      if (!rlsStatus.insertSuccess) {
+        console.error("❌ RLS policies not properly configured");
+        displayFixInstructions();
+        setError(
+          "RLS policies not configured. Please check console for fix instructions."
+        );
+        setLoading(false);
+        return;
+      }
+
+      await Promise.all([fetchJob(), fetchCandidates("", "")]);
+      setLoading(false);
+    };
+    loadData();
+  }, [jobId]);
+
+  // Fetch candidates when filters change (server-side filtering)
+  useEffect(() => {
+    if (!loading) {
+      fetchCandidates(experienceFilter, scoreFilter);
+    }
+  }, [experienceFilter, scoreFilter]);
 
   const handleBack = () => {
     navigate("/jobs");
+  };
+
+  const processResumeFiles = async (pdfFiles) => {
+    setIsProcessing(true);
+    setUploadStatus({
+      type: "info",
+      message: "Processing resumes...",
+    });
+
+    try {
+      for (const file of pdfFiles) {
+        console.log(`\n=== PROCESSING: ${file.name} ===`);
+
+        // Extract text from PDF
+        const extractedText = await extractTextFromPDF(file);
+        console.log(`Extracted ${extractedText.length} characters from PDF`);
+
+        // Call Groq API to screen the resume
+        const groqResponse = await screenResume(
+          {
+            title: job.job_title,
+            description: job.description,
+            location: job.location,
+            type: job.workplace_type,
+          },
+          extractedText
+        );
+
+        console.log("Groq API Response:", groqResponse);
+
+        // Parse the response
+        const candidateData = parseGroqCandidateString(groqResponse);
+        if (!candidateData) {
+          console.error("Failed to parse candidate data from Groq response");
+          continue;
+        }
+
+        // Get current user ID
+        const currentUserId = await getCurrentUserId();
+        console.log(
+          `Processing resume ${file.name} with user ID:`,
+          currentUserId
+        );
+
+        if (!currentUserId) {
+          console.error("No user ID found for resume:", file.name);
+          setUploadStatus({
+            type: "error",
+            message: "User not authenticated",
+          });
+          continue;
+        }
+
+        // Insert candidate data into candidate_data table (using existing column names)
+        const { data: newCandidate, error: insertError } = await supabase
+          .from("candidate_data")
+          .insert([
+            {
+              "Full Name": candidateData.name,
+              Email: candidateData.email,
+              Phone: parseInt(candidateData.phone.replace(/\D/g, "")) || 0,
+              Score: candidateData.score,
+              Experience: parseInt(candidateData.experience) || 0,
+              Education: candidateData.education || "N/A",
+              Degree: candidateData.degree || "N/A",
+              Notes: candidateData.notes || "N/A",
+              login_user_id: currentUserId,
+            },
+          ])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Error inserting candidate data:", insertError);
+          console.error("Attempted to insert with user ID:", currentUserId);
+          setUploadStatus({
+            type: "error",
+            message: `Failed to save candidate data: ${insertError.message}`,
+          });
+          continue;
+        }
+
+        console.log("Inserted candidate data:", newCandidate);
+
+        // Insert into active_job_candidates table
+        const { error: jobCandidateError } = await supabase
+          .from("active_job_candidates")
+          .insert([
+            {
+              job_id: jobId,
+              candidate_id: newCandidate.id,
+              login_user_id: currentUserId,
+            },
+          ]);
+
+        if (jobCandidateError) {
+          console.error("Error linking candidate to job:", jobCandidateError);
+          console.error("Attempted to link with user ID:", currentUserId);
+          setUploadStatus({
+            type: "error",
+            message: `Failed to link candidate to job: ${jobCandidateError.message}`,
+          });
+          continue;
+        }
+
+        console.log("Successfully linked candidate to job");
+      }
+
+      // Refresh candidates list with current filters
+      await fetchCandidates(experienceFilter, scoreFilter);
+
+      setUploadStatus({
+        type: "success",
+        message: `Successfully processed ${pdfFiles.length} resume(s) and added candidate(s) to the database.`,
+      });
+    } catch (error) {
+      console.error("Error processing resumes:", error);
+      setUploadStatus({
+        type: "error",
+        message: `Error processing resumes: ${error.message}`,
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleFileUpload = async (event) => {
@@ -491,119 +867,16 @@ Nice to have:
       return;
     }
 
-    if (uploadedFiles.length + pdfFiles.length > 10) {
+    if (pdfFiles.length === 0) {
       setUploadStatus({
         type: "error",
-        message: `You can only upload up to 10 files. You already have ${uploadedFiles.length} files uploaded.`,
+        message: "No PDF files selected.",
       });
       return;
     }
 
-    // Extract text from each PDF and print to console
-    const newExtractedTexts = {};
-    for (const file of pdfFiles) {
-      try {
-        console.log(`\n=== EXTRACTING TEXT FROM: ${file.name} ===`);
-        const extractedText = await extractTextFromPDF(file);
-
-        // Store extracted text in state
-        newExtractedTexts[file.name] = extractedText;
-
-        console.log(`\n📄 PDF Text Content for "${file.name}":`);
-        console.log("=".repeat(80));
-        console.log(extractedText);
-        console.log("=".repeat(80));
-        console.log(
-          `\n✅ Successfully extracted ${extractedText.length} characters from "${file.name}"`
-        );
-      } catch (error) {
-        console.error(`❌ Failed to extract text from "${file.name}":`, error);
-        setUploadStatus({
-          type: "error",
-          message: `Failed to extract text from ${file.name}: ${error.message}`,
-        });
-        return;
-      }
-    }
-
-    // Update extracted texts state
-    setExtractedTexts((prev) => ({ ...prev, ...newExtractedTexts }));
-
-    // Process extracted text through Groq API
-    setIsProcessing(true);
-    setUploadStatus({
-      type: "info",
-      message: "Processing resumes through AI...",
-    });
-
-    try {
-      const newCandidates = [];
-
-      for (const file of pdfFiles) {
-        const extractedText = newExtractedTexts[file.name];
-        if (extractedText) {
-          console.log(`\n🤖 Processing "${file.name}" through Groq API...`);
-
-          // Format job information for Groq API
-          const formattedJob = formatJobForGroq(job);
-          console.log(`\n📋 Job Information being sent to Groq API:`);
-          console.log(`Job Title: ${formattedJob.title}`);
-          console.log(
-            `Job Description: ${formattedJob.description.substring(0, 200)}...`
-          );
-          console.log(`Location: ${formattedJob.location}`);
-          console.log(`Type: ${formattedJob.type}`);
-
-          // Call Groq API to screen the resume
-          const groqResponse = await screenResume(formattedJob, extractedText);
-          console.log(`\n📊 Groq API Response for "${file.name}":`);
-          console.log(groqResponse);
-
-          // Parse the response and add to candidates
-          const candidate = parseGroqCandidateString(groqResponse);
-          if (candidate) {
-            candidate.id = Date.now() + Math.random();
-            candidate.resume = file.name;
-            newCandidates.push(candidate);
-            console.log(`\n✅ Added candidate from "${file.name}":`, candidate);
-          } else {
-            console.warn(`❌ Failed to parse candidate from "${file.name}"`);
-          }
-        }
-      }
-
-      // Add new candidates to the table
-      if (newCandidates.length > 0) {
-        setApplicants((prev) => [...prev, ...newCandidates]);
-        setUploadStatus({
-          type: "success",
-          message: `Successfully processed ${newCandidates.length} resume(s) and added ${newCandidates.length} candidate(s) to the table.`,
-        });
-      } else {
-        setUploadStatus({
-          type: "error",
-          message:
-            "Failed to process any resumes. Please check the console for details.",
-        });
-      }
-    } catch (error) {
-      console.error("Error processing resumes through Groq API:", error);
-      setUploadStatus({
-        type: "error",
-        message: `Error processing resumes: ${error.message}`,
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-
-    const newFiles = pdfFiles.map((file) => ({
-      id: Date.now() + Math.random(),
-      name: file.name,
-      size: file.size,
-      uploadDate: new Date().toISOString(),
-    }));
-
-    setUploadedFiles((prev) => [...prev, ...newFiles]);
+    // Process the selected files
+    processResumeFiles(pdfFiles);
 
     // Clear the file input
     event.target.value = "";
@@ -613,10 +886,102 @@ Nice to have:
     fileInputRef.current.click();
   };
 
+  const handleViewNotes = (notes, candidateName) => {
+    setSelectedNotes(notes);
+    setSelectedCandidateName(candidateName);
+    setIsNotesModalOpen(true);
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter((prev) => prev + 1);
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter((prev) => prev - 1);
+    if (dragCounter <= 1) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    setDragCounter(0);
+
+    const files = Array.from(e.dataTransfer.files);
+    const pdfFiles = files.filter((file) => file.type === "application/pdf");
+    const nonPdfFiles = files.filter((file) => file.type !== "application/pdf");
+
+    if (nonPdfFiles.length > 0) {
+      setUploadStatus({
+        type: "error",
+        message: `Only PDF files are allowed. ${nonPdfFiles.length} non-PDF file(s) were rejected.`,
+      });
+      return;
+    }
+
+    if (pdfFiles.length === 0) {
+      setUploadStatus({
+        type: "error",
+        message: "No PDF files selected.",
+      });
+      return;
+    }
+
+    // Process the dropped files
+    processResumeFiles(pdfFiles);
+  };
+
+  if (loading) {
+    return (
+      <Container>
+        <LoadingState>Loading applicants...</LoadingState>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <ErrorState>
+          Error: {error}
+          <br />
+          <SetupButton onClick={displaySetupInstructions}>
+            📋 Show Setup Instructions
+          </SetupButton>
+          <SetupButton
+            onClick={displayFixInstructions}
+            style={{ marginLeft: "8px" }}
+          >
+            🔧 Show RLS Fix Instructions
+          </SetupButton>
+          <SetupButton
+            onClick={disableRLSTemporarily}
+            style={{ marginLeft: "8px" }}
+          >
+            ⚠️ Show Disable RLS Instructions
+          </SetupButton>
+        </ErrorState>
+      </Container>
+    );
+  }
+
   if (!job) {
     return (
       <Container>
-        <EmptyState>Loading...</EmptyState>
+        <EmptyState>Job not found</EmptyState>
       </Container>
     );
   }
@@ -624,18 +989,18 @@ Nice to have:
   return (
     <Container>
       <Header>
-        <Title>{job.position} - Applicants</Title>
+        <Title>{job.job_title} - Applicants</Title>
         <BackButton onClick={handleBack}>← Back to Jobs</BackButton>
       </Header>
 
       <JobDescriptionContainer>
         <JobDescriptionTitle>Job Description</JobDescriptionTitle>
-        <JobDescriptionContent>{job.jobDescription}</JobDescriptionContent>
+        <JobDescriptionContent>{job.description}</JobDescriptionContent>
       </JobDescriptionContainer>
 
       <TableContainer>
         <TableHeader>
-          <TableTitle>Applicants ({filteredApplicants.length})</TableTitle>
+          <TableTitle>Applicants ({filteredCandidates.length})</TableTitle>
           <div
             style={{
               display: "flex",
@@ -675,10 +1040,7 @@ Nice to have:
               </FilterGroup>
             </FiltersContainer>
 
-            <UploadButton
-              onClick={triggerFileUpload}
-              disabled={uploadedFiles.length >= 10 || isProcessing}
-            >
+            <UploadButton onClick={triggerFileUpload} disabled={isProcessing}>
               {isProcessing ? "⏳ Processing..." : "📄 Upload Resume"}
             </UploadButton>
           </div>
@@ -692,6 +1054,30 @@ Nice to have:
           onChange={handleFileUpload}
         />
 
+        {/* Drag and Drop Area */}
+        <DragDropArea
+          isDragOver={isDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          <DragDropContent isDragOver={isDragOver}>
+            <DragDropIcon isDragOver={isDragOver}>
+              {isDragOver ? "📄" : "📁"}
+            </DragDropIcon>
+            <DragDropText>
+              {isDragOver ? "Drop your resumes here!" : "Drag & Drop Resumes"}
+            </DragDropText>
+            <DragDropSubtext>
+              {isDragOver
+                ? "Release to upload"
+                : "Drag PDF files here or click the upload button above"}
+            </DragDropSubtext>
+          </DragDropContent>
+          {isDragOver && <FileCount show={isDragOver}>📄</FileCount>}
+        </DragDropArea>
+
         {uploadStatus &&
           (uploadStatus.type === "success" ? (
             <SuccessStatus>✅ {uploadStatus.message}</SuccessStatus>
@@ -701,103 +1087,99 @@ Nice to have:
             <InfoStatus>⏳ {uploadStatus.message}</InfoStatus>
           ))}
 
-        {uploadedFiles.length > 0 && (
-          <div
-            style={{
-              marginBottom: "16px",
-              padding: "12px",
-              background: "rgba(175, 23, 99, 0.1)",
-              borderRadius: "8px",
-              border: "1px solid rgba(175, 23, 99, 0.3)",
-            }}
-          >
-            <div
-              style={{
-                color: "#AF1763",
-                fontWeight: "600",
-                marginBottom: "8px",
-              }}
-            >
-              Uploaded Files ({uploadedFiles.length}/10):
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {uploadedFiles.map((file) => (
-                <span
-                  key={file.id}
-                  style={{
-                    background: extractedTexts[file.name]
-                      ? "#198754"
-                      : "#374151",
-                    color: "#FFFFFF",
-                    padding: "4px 8px",
-                    borderRadius: "4px",
-                    fontSize: "0.8rem",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  {extractedTexts[file.name] && "✅"}
-                  {file.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
         <Table>
           <thead>
             <tr>
-              <Th>Name</Th>
-              <Th>Email</Th>
-              <Th>Phone</Th>
-              <Th>Score</Th>
-              <Th>Experience</Th>
-              <Th>Education</Th>
-              <Th>Degree</Th>
-              <Th>Resume</Th>
-              <Th>Notes</Th>
+              <Th style={{ width: "12%" }}>Name</Th>
+              <Th style={{ width: "15%" }}>Email</Th>
+              <Th style={{ width: "10%" }}>Phone</Th>
+              <Th style={{ width: "8%" }}>Score</Th>
+              <Th style={{ width: "10%" }}>Experience</Th>
+              <Th style={{ width: "10%" }}>Education</Th>
+              <Th style={{ width: "12%" }}>Degree</Th>
+              <Th style={{ width: "8%" }}>Resume</Th>
+              <Th style={{ width: "15%" }}>Notes</Th>
             </tr>
           </thead>
           <tbody>
-            {filteredApplicants.length === 0 ? (
+            {filteredCandidates.length === 0 ? (
               <tr>
                 <Td colSpan="9">
                   <EmptyState>
-                    {applicants.length === 0
-                      ? "No applicants found"
+                    {candidates.length === 0
+                      ? "No applicants found for this job"
                       : "No applicants match the selected filters"}
                   </EmptyState>
                 </Td>
               </tr>
             ) : (
-              filteredApplicants.map((applicant) => (
-                <tr key={applicant.id}>
-                  <Td>{applicant.name}</Td>
-                  <Td>{applicant.email}</Td>
-                  <Td>{applicant.phone}</Td>
+              filteredCandidates.map((candidate) => (
+                <tr key={candidate.id}>
+                  <Td>{candidate["Full Name"]}</Td>
+                  <Td>{candidate["Email"]}</Td>
+                  <Td>{formatPhone(candidate["Phone"])}</Td>
                   <Td>
-                    <ScoreBadge score={applicant.score}>
-                      {applicant.score}/10
+                    <ScoreBadge score={candidate["Score"]}>
+                      {candidate["Score"]}/10
                     </ScoreBadge>
                   </Td>
-                  <Td>{applicant.experience}</Td>
-                  <Td>{applicant.education}</Td>
-                  <Td>{applicant.degree || "N/A"}</Td>
+                  <Td>{candidate["Experience"]} years</Td>
+                  <Td>{candidate["Education"]}</Td>
+                  <Td>{candidate["Degree"] || "N/A"}</Td>
                   <Td>
                     <ResumeLink href="#" onClick={(e) => e.preventDefault()}>
-                      {applicant.resume === "Uploaded PDF"
-                        ? "View PDF"
-                        : "View Resume"}
+                      View Resume
                     </ResumeLink>
                   </Td>
-                  <Td style={{ maxWidth: "200px" }}>{applicant.notes}</Td>
+                  <Td style={{ maxWidth: "200px", wordBreak: "break-word" }}>
+                    {candidate["Notes"] ? (
+                      <div>
+                        <NotesText>
+                          {candidate["Notes"].length > 50
+                            ? `${candidate["Notes"].substring(0, 50)}...`
+                            : candidate["Notes"]}
+                        </NotesText>
+                        {candidate["Notes"].length > 50 && (
+                          <ViewMoreButton
+                            onClick={() =>
+                              handleViewNotes(
+                                candidate["Notes"],
+                                candidate["Full Name"]
+                              )
+                            }
+                          >
+                            View More
+                          </ViewMoreButton>
+                        )}
+                      </div>
+                    ) : (
+                      "N/A"
+                    )}
+                  </Td>
                 </tr>
               ))
             )}
           </tbody>
         </Table>
       </TableContainer>
+
+      {/* Notes Modal */}
+      {isNotesModalOpen && (
+        <ModalOverlay onClick={() => setIsNotesModalOpen(false)}>
+          <ModalContainer onClick={(e) => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Notes for {selectedCandidateName}</ModalTitle>
+              <CloseButton onClick={() => setIsNotesModalOpen(false)}>
+                ×
+              </CloseButton>
+            </ModalHeader>
+            <ModalBody>{selectedNotes}</ModalBody>
+            <ModalFooter>
+              <Button onClick={() => setIsNotesModalOpen(false)}>Close</Button>
+            </ModalFooter>
+          </ModalContainer>
+        </ModalOverlay>
+      )}
     </Container>
   );
 };

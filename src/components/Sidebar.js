@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getCurrentUser } from "../utils/auth";
+import { supabase } from "../supabase";
 
 const SidebarContainer = styled.div`
   width: 280px;
@@ -119,8 +121,62 @@ const NavIcon = styled.span`
   text-align: center;
 `;
 
+const LogoutButton = styled.button`
+  width: calc(100% - 64px);
+  margin: 32px 32px 0 32px;
+  padding: 12px 0;
+  background: #232837;
+  color: #af1763;
+  border: 1.5px solid #af1763;
+  border-radius: 8px;
+  font-size: 1.08rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border 0.18s;
+  display: block;
+  text-align: center;
+  &:hover {
+    background: #af1763;
+    color: #fff;
+    border-color: #af1763;
+  }
+`;
+
 const Sidebar = () => {
   const location = useLocation();
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    async function fetchUser() {
+      const u = await getCurrentUser();
+      setUser(u);
+    }
+    fetchUser();
+  }, []);
+
+  // Get display name and avatar
+  let displayName = "";
+  let avatarUrl = "";
+  let initials = "";
+  if (user) {
+    displayName =
+      user.user_metadata?.["Display name"] ||
+      user.user_metadata?.display_name ||
+      user.user_metadata?.name ||
+      user.email?.split("@")[0] ||
+      "User";
+    avatarUrl =
+      user.user_metadata?.["Avatar URL"] ||
+      user.user_metadata?.avatar_url ||
+      "";
+    initials = displayName
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  }
 
   const navigationItems = [
     {
@@ -143,17 +199,31 @@ const Sidebar = () => {
     },
   ];
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/login");
+  };
+
   return (
     <SidebarContainer>
       <Logo>
-        <LogoText>CORONA</LogoText>
+        <LogoText>INTERNOVA</LogoText>
       </Logo>
 
       <UserSection>
         <UserInfo>
-          <UserAvatar>HK</UserAvatar>
+          {avatarUrl ? (
+            <UserAvatar
+              as="img"
+              src={avatarUrl}
+              alt={displayName}
+              style={{ objectFit: "cover" }}
+            />
+          ) : (
+            <UserAvatar>{initials || "U"}</UserAvatar>
+          )}
           <UserDetails>
-            <UserName>Henry Klein</UserName>
+            <UserName>{displayName || "User"}</UserName>
             <UserStatus>Gold Member</UserStatus>
           </UserDetails>
         </UserInfo>
@@ -177,6 +247,7 @@ const Sidebar = () => {
           </NavList>
         </NavigationSection>
       ))}
+      <LogoutButton onClick={handleLogout}>Log Out</LogoutButton>
     </SidebarContainer>
   );
 };

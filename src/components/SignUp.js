@@ -260,6 +260,25 @@ function SignUp() {
     }
   };
 
+  const handleLinkedInSignUp = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "linkedin_oidc",
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+          scopes: "openid profile email w_member_social",
+        },
+      });
+      if (error) setError(error.message);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -289,7 +308,7 @@ function SignUp() {
     <PageContainer>
       <Left>
         <FormCard>
-          <Title>Log in to your account</Title>
+          <Title>Create a new account</Title>
           <SubTitle>
             Enter your email and password to access your dashboard
           </SubTitle>
@@ -303,7 +322,7 @@ function SignUp() {
                 style={{ borderRadius: "4px" }}
               />
             </SocialButton>
-            <SocialButton disabled>
+            <SocialButton onClick={handleLinkedInSignUp} disabled={loading}>
               <img
                 src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linkedin/linkedin-original.svg"
                 alt="LinkedIn"
@@ -320,7 +339,7 @@ function SignUp() {
               />
             </SocialButton>
           </SocialRow>
-          <Divider>OR LOG IN WITH</Divider>
+          <Divider>SIGN UP</Divider>
           {error && <ErrorMsg>{error}</ErrorMsg>}
           <form onSubmit={handleSubmit} autoComplete="off">
             <Input
@@ -347,7 +366,7 @@ function SignUp() {
               autoComplete="off"
             />
             <GradientButton type="submit" disabled={loading}>
-              Log In
+              Sign Up
             </GradientButton>
           </form>
           <SignInLink>

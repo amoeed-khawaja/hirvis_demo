@@ -1,7 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import AddJobModal from "./AddJobModal";
+import { supabase } from "../supabase";
+import { setupRLSPolicies, checkRLSStatus } from "../utils/setupRLS";
+import { getCurrentUserId } from "../utils/auth";
 
 const Container = styled.div`
   padding: 40px 32px 32px 32px;
@@ -101,6 +104,20 @@ const ActionButton = styled.button`
 const EmptyState = styled.div`
   text-align: center;
   color: #9ca3af;
+  padding: 60px 20px;
+  font-size: 1.1rem;
+`;
+
+const LoadingState = styled.div`
+  text-align: center;
+  color: #9ca3af;
+  padding: 60px 20px;
+  font-size: 1.1rem;
+`;
+
+const ErrorState = styled.div`
+  text-align: center;
+  color: #ef4444;
   padding: 60px 20px;
   font-size: 1.1rem;
 `;
@@ -224,69 +241,119 @@ const DangerButton = styled(Button)`
 const ActiveJobs = () => {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [jobs, setJobs] = useState([
-    {
-      id: 1,
-      position: "Senior React Developer",
-      location: "New York, NY",
-      type: "Full-time",
-      postedDate: "2024-01-15",
-      applications: 5,
-      jobTitle: "Senior React Developer",
-      jobLocation: "New York, NY",
-      workplaceType: "Full-time",
-      jobDescription:
-        "We are looking for a Senior React Developer to join our dynamic team. You will be responsible for building and maintaining high-quality web applications using React.js and related technologies. Key responsibilities include developing new user-facing features, building reusable code and libraries, ensuring technical feasibility of UI/UX designs, optimizing applications for maximum speed and scalability, collaborating with team members and stakeholders, and mentoring junior developers.",
-      jobDuration: 30,
-      postToLinkedIn: true,
-      requiredSkills: [
-        "React",
-        "JavaScript",
-        "TypeScript",
-        "Node.js",
-        "Redux",
-        "Git",
-      ],
-    },
-    {
-      id: 2,
-      position: "UX/UI Designer",
-      location: "Remote",
-      type: "Contract",
-      postedDate: "2024-01-20",
-      applications: 3,
-      jobTitle: "UX/UI Designer",
-      jobLocation: "Remote",
-      workplaceType: "Contract",
-      jobDescription:
-        "We're seeking a talented UX/UI Designer to create beautiful and functional user experiences. You'll work closely with our product and development teams to design intuitive interfaces that delight our users. Responsibilities include conducting user research, creating wireframes and prototypes, designing high-fidelity mockups, collaborating with developers, and maintaining design systems.",
-      jobDuration: 60,
-      postToLinkedIn: false,
-      requiredSkills: [
-        "Figma",
-        "Adobe Creative Suite",
-        "User Research",
-        "Prototyping",
-        "Design Systems",
-      ],
-    },
-  ]);
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  const handleAddJob = (jobData) => {
-    const newJob = {
-      id: Date.now(),
-      position: jobData.jobTitle,
-      location: jobData.jobLocation,
-      type: jobData.workplaceType,
-      postedDate: new Date().toLocaleDateString(),
-      applications: 0,
-      ...jobData,
-    };
-    setJobs((prev) => [...prev, newJob]);
+  // Fetch jobs from Supabase with applicant counts
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+
+      // Get current user ID
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setError("User not authenticated");
+        setLoading(false);
+        return;
+      }
+
+      // First, get all jobs for current user
+      const { data: jobsData, error: jobsError } = await supabase
+        .from("active_jobs")
+        .select("*")
+        .eq("login_user_id", currentUserId)
+        .order("created_at", { ascending: false });
+
+      if (jobsError) {
+        console.error("Error fetching jobs:", jobsError);
+        setError(jobsError.message);
+        return;
+      }
+
+      // Then, get applicant counts for each job (only for current user's jobs)
+      const jobsWithApplicants = await Promise.all(
+        (jobsData || []).map(async (job) => {
+          try {
+            const { count, error: countError } = await supabase
+              .from("active_job_candidates")
+              .select("*", { count: "exact", head: true })
+              .eq("job_id", job.job_id)
+              .eq("login_user_id", currentUserId);
+
+            if (countError) {
+              console.error(
+                `Error getting applicant count for job ${job.job_id}:`,
+                countError
+              );
+              return { ...job, applicants: 0 };
+            }
+
+            return { ...job, applicants: count || 0 };
+          } catch (err) {
+            console.error(`Error processing job ${job.job_id}:`, err);
+            return { ...job, applicants: 0 };
+          }
+        })
+      );
+
+      setJobs(jobsWithApplicants);
+      setError(null);
+    } catch (err) {
+      console.error("Error in fetchJobs:", err);
+      setError("Failed to fetch jobs");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobs();
+    // Check RLS status on component mount
+    checkRLSStatus();
+  }, []);
+
+  const handleAddJob = async (jobData) => {
+    try {
+      // Get current user ID
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("active_jobs")
+        .insert([
+          {
+            job_title: jobData.jobTitle,
+            description: jobData.jobDescription,
+            workplace_type: jobData.workplaceType,
+            location: jobData.jobLocation,
+            job_active_duration: jobData.jobDuration,
+            post_linkedin: jobData.postToLinkedIn,
+            skills: jobData.requiredSkills?.join(", ") || "",
+            login_user_id: currentUserId,
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error("Error adding job:", error);
+        setError(error.message);
+      } else {
+        console.log("Job added successfully:", data);
+        fetchJobs(); // Refresh the jobs list
+        setIsModalOpen(false);
+      }
+    } catch (err) {
+      console.error("Error in handleAddJob:", err);
+      setError("Failed to add job");
+    }
   };
 
   const handleViewJob = (job) => {
@@ -304,34 +371,94 @@ const ActiveJobs = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    setJobs((prev) => prev.filter((job) => job.id !== selectedJob.id));
-    setIsDeleteModalOpen(false);
-    setSelectedJob(null);
+  const confirmDelete = async () => {
+    try {
+      // Get current user ID
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("active_jobs")
+        .delete()
+        .eq("job_id", selectedJob.job_id)
+        .eq("login_user_id", currentUserId);
+
+      if (error) {
+        console.error("Error deleting job:", error);
+        setError(error.message);
+      } else {
+        console.log("Job deleted successfully");
+        fetchJobs(); // Refresh the jobs list
+        setIsDeleteModalOpen(false);
+        setSelectedJob(null);
+      }
+    } catch (err) {
+      console.error("Error in confirmDelete:", err);
+      setError("Failed to delete job");
+    }
   };
 
-  const handleUpdateJob = (updatedData) => {
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === selectedJob.id
-          ? {
-              ...job,
-              ...updatedData,
-              position: updatedData.jobTitle,
-              location: updatedData.jobLocation,
-              type: updatedData.workplaceType,
-            }
-          : job
-      )
-    );
-    setIsEditModalOpen(false);
-    setSelectedJob(null);
+  const handleUpdateJob = async (updatedData) => {
+    try {
+      // Get current user ID
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setError("User not authenticated");
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("active_jobs")
+        .update({
+          job_title: updatedData.jobTitle,
+          description: updatedData.jobDescription,
+          workplace_type: updatedData.workplaceType,
+          location: updatedData.jobLocation,
+          job_active_duration: updatedData.jobDuration,
+          post_linkedin: updatedData.postToLinkedIn,
+          skills: updatedData.requiredSkills?.join(", ") || "",
+        })
+        .eq("job_id", selectedJob.job_id)
+        .eq("login_user_id", currentUserId)
+        .select();
+
+      if (error) {
+        console.error("Error updating job:", error);
+        setError(error.message);
+      } else {
+        console.log("Job updated successfully:", data);
+        fetchJobs(); // Refresh the jobs list
+        setIsEditModalOpen(false);
+        setSelectedJob(null);
+      }
+    } catch (err) {
+      console.error("Error in handleUpdateJob:", err);
+      setError("Failed to update job");
+    }
   };
 
   const handleViewApplicants = () => {
     setIsViewModalOpen(false);
-    navigate(`/jobs/${selectedJob.id}/applicants`);
+    navigate(`/jobs/${selectedJob.job_id}/applicants`);
   };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <Container>
+        <Header>
+          <Title>Jobs</Title>
+        </Header>
+        <LoadingState>Loading jobs...</LoadingState>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -343,6 +470,8 @@ const ActiveJobs = () => {
         </AddButton>
       </Header>
 
+      {error && <ErrorState>Error: {error}</ErrorState>}
+
       <TableContainer>
         <Table>
           <thead>
@@ -351,25 +480,30 @@ const ActiveJobs = () => {
               <Th>Location</Th>
               <Th>Type</Th>
               <Th>Posted Date</Th>
-              <Th>Applications</Th>
+              <Th>Duration</Th>
+              <Th>Applicants</Th>
               <Th>Actions</Th>
             </tr>
           </thead>
           <tbody>
             {jobs.length === 0 ? (
               <tr>
-                <Td colSpan="6">
-                  <EmptyState>No jobs found</EmptyState>
+                <Td colSpan="7">
+                  <EmptyState>
+                    No jobs found. Click "Add Job" to create your first job
+                    posting.
+                  </EmptyState>
                 </Td>
               </tr>
             ) : (
               jobs.map((job) => (
-                <tr key={job.id}>
-                  <Td>{job.position}</Td>
+                <tr key={job.job_id}>
+                  <Td>{job.job_title}</Td>
                   <Td>{job.location}</Td>
-                  <Td>{job.type}</Td>
-                  <Td>{job.postedDate}</Td>
-                  <Td>{job.applications}</Td>
+                  <Td>{job.workplace_type}</Td>
+                  <Td>{formatDate(job.created_at)}</Td>
+                  <Td>{job.job_active_duration} days</Td>
+                  <Td>{job.applicants || 0}</Td>
                   <Td>
                     <ActionButtons>
                       <ActionButton
@@ -418,7 +552,7 @@ const ActiveJobs = () => {
             <ModalBody>
               <DetailRow>
                 <DetailLabel>Position:</DetailLabel>
-                <DetailValue>{selectedJob.position}</DetailValue>
+                <DetailValue>{selectedJob.job_title}</DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Location:</DetailLabel>
@@ -426,36 +560,38 @@ const ActiveJobs = () => {
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Type:</DetailLabel>
-                <DetailValue>{selectedJob.type}</DetailValue>
+                <DetailValue>{selectedJob.workplace_type}</DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Posted Date:</DetailLabel>
-                <DetailValue>{selectedJob.postedDate}</DetailValue>
-              </DetailRow>
-              <DetailRow>
-                <DetailLabel>Applications:</DetailLabel>
-                <DetailValue>{selectedJob.applications}</DetailValue>
+                <DetailValue>{formatDate(selectedJob.created_at)}</DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Duration:</DetailLabel>
-                <DetailValue>{selectedJob.jobDuration} days</DetailValue>
+                <DetailValue>
+                  {selectedJob.job_active_duration} days
+                </DetailValue>
+              </DetailRow>
+              <DetailRow>
+                <DetailLabel>Applicants:</DetailLabel>
+                <DetailValue>{selectedJob.applicants || 0}</DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Description:</DetailLabel>
                 <DetailValue style={{ maxWidth: "300px", textAlign: "right" }}>
-                  {selectedJob.jobDescription}
+                  {selectedJob.description}
                 </DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Required Skills:</DetailLabel>
                 <DetailValue>
-                  {selectedJob.requiredSkills?.join(", ") || "None specified"}
+                  {selectedJob.skills || "None specified"}
                 </DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Post to LinkedIn:</DetailLabel>
                 <DetailValue>
-                  {selectedJob.postToLinkedIn ? "Yes" : "No"}
+                  {selectedJob.post_linkedin ? "Yes" : "No"}
                 </DetailValue>
               </DetailRow>
             </ModalBody>
@@ -477,7 +613,17 @@ const ActiveJobs = () => {
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
           onAddJob={handleUpdateJob}
-          initialData={selectedJob}
+          initialData={{
+            jobTitle: selectedJob.job_title,
+            jobDescription: selectedJob.description,
+            workplaceType: selectedJob.workplace_type,
+            jobLocation: selectedJob.location,
+            jobDuration: selectedJob.job_active_duration,
+            postToLinkedIn: selectedJob.post_linkedin,
+            requiredSkills: selectedJob.skills
+              ? selectedJob.skills.split(", ")
+              : [],
+          }}
         />
       )}
 
@@ -493,7 +639,7 @@ const ActiveJobs = () => {
             </ModalHeader>
             <ModalBody>
               <p>
-                Are you sure you want to delete the job "{selectedJob.position}
+                Are you sure you want to delete the job "{selectedJob.job_title}
                 "?
               </p>
               <p style={{ color: "#9CA3AF", fontSize: "0.9rem" }}>

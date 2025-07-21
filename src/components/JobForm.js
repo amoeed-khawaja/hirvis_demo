@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import styled from "styled-components";
+import { supabase } from "../supabase";
 
 const FormContainer = styled.div`
   max-width: 600px;
@@ -47,6 +48,83 @@ const Button = styled.button`
     background: #155ab6;
   }
 `;
+const CheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  color: ${({ theme }) => theme.colors.text};
+`;
+const StatusMsg = styled.div`
+  margin-top: 12px;
+  color: ${({ error }) => (error ? "#ab2e3c" : "#198754")};
+  font-size: 1rem;
+`;
+
+async function postToLinkedIn({
+  title,
+  location,
+  description,
+  workplaceType = "",
+  requiredSkills = "",
+}) {
+  console.log("postToLinkedIn called", {
+    title,
+    location,
+    description,
+    workplaceType,
+    requiredSkills,
+  });
+  // 1. Get session and access token
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  console.log("Supabase session:", session);
+  const accessToken = session?.provider_token || session?.provider_access_token;
+  if (!accessToken)
+    throw new Error(
+      "No LinkedIn access token found. Please log in with LinkedIn."
+    );
+
+  // 2. Get user's LinkedIn ID
+  const profileRes = await fetch("https://api.linkedin.com/v2/me", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!profileRes.ok) throw new Error("Failed to fetch LinkedIn profile");
+  const profile = await profileRes.json();
+  const linkedInId = profile.id;
+  if (!linkedInId) throw new Error("No LinkedIn ID found");
+
+  // 3. Build post body for /rest/posts
+  const postBody = {
+    author: `urn:li:person:${linkedInId}`,
+    commentary: `HIRING!\nWe are looking for a ${title}\nType: ${workplaceType}\nLocation: ${location}\nJob description:\n${description}\n\nRequired skills: ${requiredSkills}`,
+    visibility: "PUBLIC",
+    distribution: {
+      feedDistribution: "MAIN_FEED",
+      targetEntities: [],
+      thirdPartyDistributionChannels: [],
+    },
+    lifecycleState: "PUBLISHED",
+    isReshareDisabledByAuthor: false,
+  };
+
+  // 4. Post to LinkedIn
+  const res = await fetch("https://api.linkedin.com/rest/posts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      "LinkedIn-Version": "202401",
+    },
+    body: JSON.stringify(postBody),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to post to LinkedIn");
+  }
+  return true;
+}
 
 const JobForm = ({ onAddJob }) => {
   const [form, setForm] = useState({
@@ -54,17 +132,45 @@ const JobForm = ({ onAddJob }) => {
     location: "",
     salaryRange: "",
     description: "",
+    workplaceType: "",
+    requiredSkills: "",
   });
+  const [postToLinkedInChecked, setPostToLinkedInChecked] = useState(false);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setStatus("");
+    setError("");
+    console.log(
+      "Form submitted. postToLinkedInChecked:",
+      postToLinkedInChecked,
+      form
+    );
     if (form.title && form.location && form.salaryRange && form.description) {
       onAddJob(form);
-      setForm({ title: "", location: "", salaryRange: "", description: "" });
+      if (postToLinkedInChecked) {
+        try {
+          await postToLinkedIn(form);
+          setStatus("Job posted to LinkedIn successfully!");
+        } catch (err) {
+          setError("Failed to post to LinkedIn: " + err.message);
+        }
+      }
+      setForm({
+        title: "",
+        location: "",
+        salaryRange: "",
+        description: "",
+        workplaceType: "",
+        requiredSkills: "",
+      });
+      setPostToLinkedInChecked(false);
     }
   };
 
@@ -93,6 +199,18 @@ const JobForm = ({ onAddJob }) => {
           onChange={handleChange}
           required
         />
+        <Input
+          name="workplaceType"
+          placeholder="Workplace Type (e.g. Remote, Onsite)"
+          value={form.workplaceType}
+          onChange={handleChange}
+        />
+        <Input
+          name="requiredSkills"
+          placeholder="Required Skills (comma separated)"
+          value={form.requiredSkills}
+          onChange={handleChange}
+        />
         <TextArea
           name="description"
           placeholder="Job Description"
@@ -100,7 +218,17 @@ const JobForm = ({ onAddJob }) => {
           onChange={handleChange}
           required
         />
+        <CheckboxLabel>
+          <input
+            type="checkbox"
+            checked={postToLinkedInChecked}
+            onChange={(e) => setPostToLinkedInChecked(e.target.checked)}
+          />
+          Post to LinkedIn
+        </CheckboxLabel>
         <Button type="submit">Add Job</Button>
+        {status && <StatusMsg>{status}</StatusMsg>}
+        {error && <StatusMsg error>{error}</StatusMsg>}
       </form>
     </FormContainer>
   );
