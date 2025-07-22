@@ -260,13 +260,23 @@ function Login() {
     setError(null);
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error, data } = await supabase.auth.signInWithOAuth({
         provider: "linkedin_oidc",
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
           scopes: "openid profile email w_member_social",
         },
       });
+      // Log the access token and decoded payload if available
+      if (data && data.session) {
+        const accessToken =
+          data.session.provider_token || data.session.provider_access_token;
+        console.log("LinkedIn access token:", accessToken);
+        if (accessToken && accessToken.split(".").length === 3) {
+          const payload = JSON.parse(atob(accessToken.split(".")[1]));
+          console.log("Decoded LinkedIn token payload:", payload);
+        }
+      }
       if (error) setError(error.message);
     } catch (err) {
       setError(err.message);

@@ -102,8 +102,8 @@ const TabContainer = styled.div`
 const Tab = styled.button`
   flex: 1;
   padding: 12px 16px;
-  background: ${(props) => (props.active ? "#AF1763" : "transparent")};
-  color: ${(props) => (props.active ? "#FFFFFF" : "#9CA3AF")};
+  background: ${(props) => (props.$active ? "#AF1763" : "transparent")};
+  color: ${(props) => (props.$active ? "#FFFFFF" : "#9CA3AF")};
   border: none;
   border-radius: 6px;
   font-weight: 500;
@@ -112,8 +112,8 @@ const Tab = styled.button`
 
   &:hover {
     background: ${(props) =>
-      props.active ? "#AF1763" : "rgba(175, 23, 99, 0.1)"};
-    color: ${(props) => (props.active ? "#FFFFFF" : "#FFFFFF")};
+      props.$active ? "#AF1763" : "rgba(175, 23, 99, 0.1)"};
+    color: ${(props) => (props.$active ? "#FFFFFF" : "#FFFFFF")};
   }
 `;
 
@@ -484,6 +484,7 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
   };
 
   async function postToLinkedIn(job) {
+    console.log("Attempting to post to LinkedIn", job);
     setStatus("");
     setError("");
     // 1. Get session and access token
@@ -497,14 +498,24 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
         "No LinkedIn access token found. Please log in with LinkedIn."
       );
     // 2. Call backend proxy
-    const res = await fetch("http://localhost:5000/api/linkedin-post", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken, job }),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Failed to post to LinkedIn");
-    return true;
+    try {
+      console.log("Will send POST to backend", { accessToken, job });
+      const res = await fetch("http://localhost:5000/api/linkedin-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessToken, job }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("Failed to post job to LinkedIn:", data.error || data);
+        throw new Error(data.error || "Failed to post to LinkedIn");
+      }
+      console.log("Job posted to LinkedIn successfully!", data);
+      return true;
+    } catch (err) {
+      console.error("Error posting job to LinkedIn:", err);
+      throw err;
+    }
   }
 
   const handleSubmit = async () => {
@@ -559,13 +570,13 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
 
         <TabContainer>
           <Tab
-            active={activeTab === "basic"}
+            $active={activeTab === "basic"}
             onClick={() => setActiveTab("basic")}
           >
             Basic Information
           </Tab>
           <Tab
-            active={activeTab === "skills"}
+            $active={activeTab === "skills"}
             onClick={() => setActiveTab("skills")}
           >
             Required Skills

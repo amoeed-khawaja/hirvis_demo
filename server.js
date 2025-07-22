@@ -28,6 +28,7 @@ app.post("/api/groq", async (req, res) => {
 });
 
 app.post("/api/linkedin-post", async (req, res) => {
+  console.log("Received POST /api/linkedin-post", req.body);
   try {
     const { accessToken, job } = req.body;
     if (!accessToken || !job) {
