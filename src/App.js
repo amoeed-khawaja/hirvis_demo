@@ -8,15 +8,21 @@ import {
 } from "react-router-dom";
 import Layout from "./components/Layout";
 import JobList from "./components/JobList";
-import JobForm from "./components/JobForm";
+import AddJobModal from "./components/AddJobModal";
 import JobDetails from "./components/JobDetails";
 import Dashboard from "./components/Dashboard";
 import ActiveJobs from "./components/ActiveJobs";
 import Applicants from "./components/Applicants";
 import SignUp from "./components/SignUp";
 import Login from "./components/Login";
+import LandingPage from "./components/LandingPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 import TableInspector from "./components/TableInspector";
+import UserDataSetup from "./components/UserDataSetup";
+import UserMigration from "./components/UserMigration";
+import MigrationTest from "./components/MigrationTest";
+import OnboardingForm from "./components/OnboardingForm";
+import DatabaseSetup from "./components/DatabaseSetup";
 import { inspectActiveJobsTable } from "./utils/inspectActiveJobs";
 import {
   jobs as initialJobs,
@@ -27,6 +33,8 @@ import { theme } from "./theme";
 import "./App.css";
 import Candidates from "./components/Candidates";
 import Settings from "./components/Settings";
+import Billings from "./components/Billings";
+import Assistant from "./components/Assistant";
 
 function App() {
   const [jobs, setJobs] = useState(initialJobs);
@@ -65,16 +73,33 @@ function App() {
     <ThemeProvider theme={theme}>
       <Router>
         <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/login" element={<Login />} />
           <Route
-            path="/"
+            path="/app"
             element={
               <ProtectedRoute>
                 <Navigate to="/dashboard" replace />
               </ProtectedRoute>
             }
           />
-          <Route path="/signup" element={<SignUp />} />
-          <Route path="/login" element={<Login />} />
+          <Route
+            path="/test"
+            element={
+              <div style={{ color: "white", padding: "20px" }}>
+                Test route - no protection
+              </div>
+            }
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute>
+                <OnboardingForm />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/*"
             element={
@@ -88,19 +113,23 @@ function App() {
                       path="jobs/:jobId/applicants"
                       element={<Applicants />}
                     />
+                    <Route path="assistant" element={<Assistant />} />
                     <Route path="settings" element={<Settings />} />
-                    <Route
-                      path="billings"
-                      element={
-                        <div style={{ color: "#fff", padding: "32px" }}>
-                          Billings Page (Coming Soon)
-                        </div>
-                      }
-                    />
+                    <Route path="billings" element={<Billings />} />
                     <Route path="inspector" element={<TableInspector />} />
+                    <Route path="user-setup" element={<UserDataSetup />} />
+                    <Route path="user-migration" element={<UserMigration />} />
+                    <Route path="migration-test" element={<MigrationTest />} />
+                    <Route path="database-setup" element={<DatabaseSetup />} />
                     <Route
                       path="add"
-                      element={<JobForm onAddJob={handleAddJob} />}
+                      element={
+                        <AddJobModal
+                          isOpen={true}
+                          onClose={() => window.history.back()}
+                          onAddJob={handleAddJob}
+                        />
+                      }
                     />
                     <Route
                       path="job/:id"
@@ -112,6 +141,10 @@ function App() {
                           setCandidates={setCandidates}
                         />
                       }
+                    />
+                    <Route
+                      path="*"
+                      element={<Navigate to="dashboard" replace />}
                     />
                   </Routes>
                 </Layout>

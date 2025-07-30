@@ -12,6 +12,13 @@ const MainContent = styled.main`
   flex: 1;
   background-color: #191c24;
   overflow-x: hidden;
+  display: flex;
+  justify-content: center;
+  padding-left: 280px; /* Account for sidebar width */
+
+  @media (max-width: 1024px) {
+    padding-left: 0;
+  }
 `;
 
 const Layout = ({ children }) => {

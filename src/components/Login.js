@@ -245,7 +245,7 @@ function Login() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/app`,
         },
       });
       if (error) setError(error.message);
@@ -263,7 +263,7 @@ function Login() {
       const { error, data } = await supabase.auth.signInWithOAuth({
         provider: "linkedin_oidc",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/app`,
           scopes: "openid profile email w_member_social",
         },
       });
@@ -297,7 +297,7 @@ function Login() {
       if (error) {
         setError(error.message);
       } else {
-        navigate("/dashboard");
+        navigate("/app");
       }
     } catch (err) {
       setError(err.message);
@@ -360,11 +360,11 @@ function Login() {
               autoComplete="off"
             />
             <GradientButton type="submit" disabled={loading}>
-              Log In
+              {loading ? "Logging In..." : "Log In"}
             </GradientButton>
           </form>
           <SignUpLink>
-            Don't have an account? <Link to="/">Sign up</Link>
+            Don't have an account? <Link to="/signup">Sign up</Link>
           </SignUpLink>
         </FormCard>
       </Left>

@@ -5,6 +5,7 @@ import * as pdfjsLib from "pdfjs-dist/build/pdf";
 import { GlobalWorkerOptions } from "pdfjs-dist/build/pdf";
 import { screenResume } from "../api";
 import { supabase } from "../supabase";
+import LoadingSpinner from "./LoadingSpinner";
 import {
   checkTablesExist,
   displaySetupInstructions,
@@ -76,10 +77,13 @@ function formatPhone(phone) {
 const Container = styled.div`
   padding: 40px 32px 32px 32px;
   max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
   background-color: #191c24;
   min-height: 100vh;
-  margin-left: 280px;
+
+  @media (max-width: 1024px) {
+    padding: 20px 16px;
+  }
 `;
 
 const Header = styled.div`
@@ -947,7 +951,7 @@ const Applicants = () => {
   if (loading) {
     return (
       <Container>
-        <LoadingState>Loading applicants...</LoadingState>
+        <LoadingSpinner text="Loading applicants..." />
       </Container>
     );
   }

@@ -483,6 +483,47 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
     }
   };
 
+  async function checkLinkedInPermissions() {
+    console.log("Checking LinkedIn permissions...");
+    setStatus("");
+    setError("");
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const accessToken =
+      session?.provider_token || session?.provider_access_token;
+
+    if (!accessToken) {
+      setError("No LinkedIn access token found. Please log in with LinkedIn.");
+      return;
+    }
+
+    try {
+      const res = await fetch(
+        "http://localhost:5000/api/check-linkedin-permissions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken }),
+        }
+      );
+      const data = await res.json();
+      console.log("LinkedIn permissions check:", data);
+
+      if (res.ok) {
+        setStatus(
+          `LinkedIn Permissions Check Complete. Accessible endpoints: ${data.summary.accessibleEndpoints}/${data.summary.totalEndpoints}`
+        );
+        console.log("Full permissions data:", data);
+      } else {
+        setError("Failed to check LinkedIn permissions: " + data.error);
+      }
+    } catch (err) {
+      setError("Error checking LinkedIn permissions: " + err.message);
+    }
+  }
+
   async function postToLinkedIn(job) {
     console.log("Attempting to post to LinkedIn", job);
     setStatus("");
@@ -510,8 +551,8 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
         console.error("Failed to post job to LinkedIn:", data.error || data);
         throw new Error(data.error || "Failed to post to LinkedIn");
       }
-      console.log("Job posted to LinkedIn successfully!", data);
-      return true;
+      console.log("LinkedIn response:", data);
+      return data;
     } catch (err) {
       console.error("Error posting job to LinkedIn:", err);
       throw err;
@@ -525,8 +566,12 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
       onAddJob(formData);
       if (formData.postToLinkedIn) {
         try {
-          await postToLinkedIn(formData);
-          setStatus("Job posted to LinkedIn successfully!");
+          const linkedInResponse = await postToLinkedIn(formData);
+          if (linkedInResponse.message) {
+            setStatus(linkedInResponse.message);
+          } else {
+            setStatus("Job posted to LinkedIn successfully!");
+          }
         } catch (err) {
           setError("Failed to post to LinkedIn: " + err.message);
         }
@@ -674,6 +719,25 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
                 Automatically create and post a job listing to your LinkedIn
                 profile.
               </p>
+
+              <div
+                style={{
+                  marginTop: "16px",
+                  display: "flex",
+                  gap: "12px",
+                  alignItems: "center",
+                }}
+              >
+                <SecondaryButton
+                  onClick={checkLinkedInPermissions}
+                  style={{ fontSize: "0.8rem", padding: "8px 16px" }}
+                >
+                  Check LinkedIn Permissions
+                </SecondaryButton>
+                <span style={{ color: "#9ca3af", fontSize: "0.8rem" }}>
+                  Test what LinkedIn API access you have
+                </span>
+              </div>
             </>
           )}
 

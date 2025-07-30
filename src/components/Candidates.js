@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from "react";
 import styled, { keyframes } from "styled-components";
 import { supabase } from "../supabase";
+import LoadingSpinner from "./LoadingSpinner";
 import { getCurrentUserId } from "../utils/auth";
 
 const Container = styled.div`
   padding: 40px 32px 32px 32px;
   max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
   background-color: ${({ theme }) => theme.colors.background};
   min-height: 100vh;
-  margin-left: 280px;
+
+  @media (max-width: 1024px) {
+    padding: 20px 16px;
+  }
 `;
 
 const Header = styled.div`
@@ -281,11 +285,13 @@ const Candidates = () => {
         onChange={(e) => setSearch(e.target.value)}
       />
       {loading ? (
-        <Loading>Loading candidates...</Loading>
+        <LoadingSpinner text="Loading candidates..." />
       ) : error ? (
         <ErrorMsg>{error}</ErrorMsg>
       ) : filteredCandidates.length === 0 ? (
-        <Loading>No candidates found.</Loading>
+        <div style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+          No candidates found.
+        </div>
       ) : (
         <Grid>
           {filteredCandidates.map((c) => {

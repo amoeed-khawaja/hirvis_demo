@@ -14,6 +14,11 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
+
+  @media (max-width: 1024px) {
+    margin: 20px auto 0 auto;
+    padding: 32px 24px 24px 24px;
+  }
 `;
 
 const AvatarWrapper = styled.div`

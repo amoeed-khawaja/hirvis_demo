@@ -188,6 +188,7 @@ const Sidebar = () => {
       items: [
         { path: "/candidates", label: "Candidates", icon: "👥" },
         { path: "/jobs", label: "Active Jobs", icon: "💼" },
+        { path: "/assistant", label: "Assistant", icon: "🤖" },
       ],
     },
     {

@@ -132,6 +132,12 @@ const ErrorMsg = styled.div`
   font-size: 0.98rem;
 `;
 
+const SuccessMsg = styled.div`
+  color: #2ecc71;
+  margin-bottom: 12px;
+  font-size: 0.98rem;
+`;
+
 const SignInLink = styled.div`
   color: #b3b8c5;
   text-align: center;
@@ -236,6 +242,7 @@ function SignUp() {
   });
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -249,7 +256,7 @@ function SignUp() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/app`,
         },
       });
       if (error) setError(error.message);
@@ -267,7 +274,7 @@ function SignUp() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "linkedin_oidc",
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/app`,
           scopes: "openid profile email w_member_social",
         },
       });
@@ -288,16 +295,28 @@ function SignUp() {
     }
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      console.log("Starting signup process for:", form.email);
+
+      // First, try to create the user without the trigger causing issues
+      const { data, error } = await supabase.auth.signUp({
         email: form.email,
         password: form.password,
       });
+
+      console.log("Signup response:", { data, error });
+
       if (error) {
+        console.error("Supabase auth error:", error);
         setError(error.message);
       } else {
-        navigate("/dashboard");
+        console.log("Auth signup successful, user:", data.user);
+
+        // After successful signup, always go to onboarding
+        // User data will be created after onboarding is complete
+        navigate("/onboarding");
       }
     } catch (err) {
+      console.error("Unexpected error during signup:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -341,6 +360,12 @@ function SignUp() {
           </SocialRow>
           <Divider>SIGN UP</Divider>
           {error && <ErrorMsg>{error}</ErrorMsg>}
+          {success && (
+            <SuccessMsg>
+              ✅ Account created successfully! Please check your email to verify
+              your account before logging in.
+            </SuccessMsg>
+          )}
           <form onSubmit={handleSubmit} autoComplete="off">
             <Input
               name="email"
@@ -366,7 +391,7 @@ function SignUp() {
               autoComplete="off"
             />
             <GradientButton type="submit" disabled={loading}>
-              Sign Up
+              {loading ? "Creating Account..." : "Sign Up"}
             </GradientButton>
           </form>
           <SignInLink>

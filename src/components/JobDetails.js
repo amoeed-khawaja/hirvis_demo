@@ -16,6 +16,11 @@ const DetailsContainer = styled.div`
   border-radius: 16px;
   box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
   color: ${({ theme }) => theme.colors.text};
+
+  @media (max-width: 1024px) {
+    margin: 20px auto;
+    padding: 24px;
+  }
 `;
 const UploadSection = styled.div`
   margin: 32px 0 24px 0;
