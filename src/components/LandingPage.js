@@ -17,11 +17,12 @@ const Container = styled.div`
   min-height: 100vh;
   background: ${(props) =>
     props.theme === "dark"
-      ? "linear-gradient(135deg, #10121a 0%, #191c24 100%)"
+      ? "#000000"
       : "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)"};
   color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
   overflow-x: hidden;
   transition: all 0.3s ease;
+  position: relative;
 `;
 
 const Header = styled.header`
@@ -31,16 +32,17 @@ const Header = styled.header`
   padding: 24px 40px;
   background: ${(props) =>
     props.theme === "dark"
-      ? "rgba(35, 40, 55, 0.8)"
+      ? "rgba(0, 0, 0, 0.8)"
       : "rgba(255, 255, 255, 0.95)"};
   backdrop-filter: blur(10px);
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: 1001;
   border-bottom: 1px solid
-    ${(props) => (props.theme === "dark" ? "#374151" : "#e2e8f0")};
+    ${(props) =>
+      props.theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "#e2e8f0"};
   transition: all 0.3s ease;
 `;
 
@@ -272,15 +274,120 @@ const Badge = styled.div`
   transition: all 0.3s ease;
 `;
 
+const FloatingCircles = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  display: ${(props) => (props.theme === "dark" ? "block" : "none")};
+
+  .circle-1 {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
+    border-radius: 50%;
+    top: 5%;
+    left: 5%;
+    opacity: 0.15;
+    filter: blur(60px);
+    animation: float 8s ease-in-out infinite;
+    box-shadow: 0 0 100px rgba(175, 23, 99, 0.3);
+  }
+
+  .circle-2 {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    background: linear-gradient(135deg, #5f4bfa 0%, #af1763 100%);
+    border-radius: 50%;
+    top: 50%;
+    right: 10%;
+    opacity: 0.12;
+    filter: blur(50px);
+    animation: float 10s ease-in-out infinite reverse;
+    box-shadow: 0 0 80px rgba(95, 75, 250, 0.3);
+  }
+
+  .circle-3 {
+    position: absolute;
+    width: 350px;
+    height: 350px;
+    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 50%, #af1763 100%);
+    border-radius: 50%;
+    bottom: 15%;
+    left: 15%;
+    opacity: 0.1;
+    filter: blur(70px);
+    animation: float 12s ease-in-out infinite;
+    box-shadow: 0 0 120px rgba(175, 23, 99, 0.2);
+  }
+
+  .circle-4 {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(135deg, #5f4bfa 0%, #af1763 50%, #5f4bfa 100%);
+    border-radius: 50%;
+    top: 30%;
+    left: 60%;
+    opacity: 0.08;
+    filter: blur(40px);
+    animation: float 15s ease-in-out infinite;
+    box-shadow: 0 0 60px rgba(95, 75, 250, 0.2);
+  }
+
+  .circle-5 {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
+    border-radius: 50%;
+    bottom: 40%;
+    right: 25%;
+    opacity: 0.06;
+    filter: blur(35px);
+    animation: float 18s ease-in-out infinite reverse;
+    box-shadow: 0 0 50px rgba(175, 23, 99, 0.15);
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px) rotate(0deg) scale(1);
+    }
+    25% {
+      transform: translateY(-30px) rotate(90deg) scale(1.05);
+    }
+    50% {
+      transform: translateY(15px) rotate(180deg) scale(0.95);
+    }
+    75% {
+      transform: translateY(-20px) rotate(270deg) scale(1.02);
+    }
+  }
+`;
+
 const DemoCard = styled.div`
-  background: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
+  background: ${(props) =>
+    props.theme === "dark" ? "rgba(255, 255, 255, 0.08)" : "#1e293b"};
   border-radius: 16px;
   padding: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+  box-shadow: ${(props) =>
+    props.theme === "dark"
+      ? "0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
+      : "0 20px 60px rgba(0, 0, 0, 0.1)"};
   animation: ${fadeInUp} 0.8s ease-out 0.2s both;
   position: relative;
-  border: 1px solid
-    ${(props) => (props.theme === "dark" ? "#e2e8f0" : "#374151")};
+  border: ${(props) =>
+    props.theme === "dark"
+      ? "1px solid rgba(255, 255, 255, 0.15)"
+      : "1px solid #374151"};
+  backdrop-filter: ${(props) =>
+    props.theme === "dark" ? "blur(20px)" : "none"};
   transition: all 0.3s ease;
 
   &::before {
@@ -640,6 +747,13 @@ const LandingPage = () => {
 
   return (
     <Container theme={theme}>
+      <FloatingCircles theme={theme}>
+        <div className="circle-1"></div>
+        <div className="circle-2"></div>
+        <div className="circle-3"></div>
+        <div className="circle-4"></div>
+        <div className="circle-5"></div>
+      </FloatingCircles>
       <Header theme={theme}>
         <Logo theme={theme}>
           <div className="logo-icon">HR</div>
@@ -658,7 +772,9 @@ const LandingPage = () => {
           <Button className="secondary" theme={theme}>
             Demo
           </Button>
-          <Button className="primary">Get Started →</Button>
+          <Button className="primary" as={Link} to="/login">
+            Get Started →
+          </Button>
         </HeaderButtons>
       </Header>
 
@@ -672,7 +788,7 @@ const LandingPage = () => {
             Manage candidates, track applications, automate onboarding, and grow
             your team - all in one place.
           </HeroSubtitle>
-          <CTAButton to="/signup">Get Started Free →</CTAButton>
+          <CTAButton to="/login">Get Started Free →</CTAButton>
 
           <SocialProof>
             <Avatars theme={theme}>
@@ -828,7 +944,7 @@ const LandingPage = () => {
             teams with Hirvis. Start your free trial today.
           </CTASubtitle>
           <CTAGroup>
-            <CTAButton to="/signup">Start Free Trial →</CTAButton>
+            <CTAButton to="/login">Start Free Trial →</CTAButton>
             <Button className="secondary" theme={theme}>
               Watch Demo
             </Button>
