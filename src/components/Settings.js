@@ -100,19 +100,17 @@ const Input = styled.input`
 `;
 
 const SaveButton = styled.button`
-  background: #af1763;
-  color: #fff;
-  padding: 12px 0;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
+  color: white;
   border: none;
+  padding: 12px 24px;
   border-radius: 8px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-top: 12px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.2s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s;
+
   &:hover {
-    background: #8a1250;
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
   }
 `;
 

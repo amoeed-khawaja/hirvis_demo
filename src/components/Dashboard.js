@@ -48,12 +48,12 @@ const SearchInput = styled.input`
 
   &:focus {
     outline: none;
-    border-color: #af1763;
+    border-color: #5f4bfa;
   }
 `;
 
 const CreateButton = styled.button`
-  background: #198754;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: #ffffff;
   padding: 12px 24px;
   border-radius: 8px;
@@ -64,7 +64,7 @@ const CreateButton = styled.button`
   transition: background 0.2s;
 
   &:hover {
-    background: #146c43;
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
   }
 `;
 
@@ -86,12 +86,12 @@ const IconButton = styled.button`
 
   &:hover {
     background: #374151;
-    border-color: #af1763;
+    border-color: #5f4bfa;
   }
 `;
 
 const PromoBanner = styled.div`
-  background: linear-gradient(135deg, #af1763, #0d6efd);
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   border-radius: 16px;
   padding: 32px;
   margin-bottom: 32px;
@@ -170,7 +170,8 @@ const StatIcon = styled.div`
   align-items: center;
   justify-content: center;
   font-size: 1.2rem;
-  background: ${(props) => props.color || "#AF1763"};
+  background: ${(props) =>
+    props.color || "linear-gradient(135deg, #af1763, #5f4bfa)"};
   color: #ffffff;
 `;
 
@@ -224,9 +225,9 @@ const ActivityItem = styled.li`
   display: flex;
   align-items: center;
   padding: 12px;
-  background: rgba(175, 23, 99, 0.05);
+  background: rgba(95, 75, 250, 0.05);
   border-radius: 8px;
-  border: 1px solid rgba(175, 23, 99, 0.1);
+  border: 1px solid rgba(95, 75, 250, 0.1);
 `;
 
 const ActivityDot = styled.span`
@@ -235,7 +236,8 @@ const ActivityDot = styled.span`
   height: 12px;
   border-radius: 50%;
   margin-right: 12px;
-  background: ${(props) => props.color || "#AF1763"};
+  background: ${(props) =>
+    props.color || "linear-gradient(135deg, #af1763, #5f4bfa)"};
 `;
 
 const ProgressBar = styled.div`
@@ -247,7 +249,7 @@ const ProgressBar = styled.div`
 `;
 
 const Progress = styled.div`
-  background: #af1763;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   height: 100%;
   width: ${(props) => props.value || 0}%;
   transition: width 0.3s;
@@ -281,7 +283,7 @@ const QuickActions = styled.div`
 `;
 
 const ActionButton = styled.button`
-  background: #af1763;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -291,7 +293,7 @@ const ActionButton = styled.button`
   cursor: pointer;
   transition: background 0.18s;
   &:hover {
-    background: #8a1250;
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
   }
 `;
 

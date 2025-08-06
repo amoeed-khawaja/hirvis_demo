@@ -164,22 +164,18 @@ const Button = styled.button`
 
 const Hero = styled.section`
   padding: 120px 40px 80px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
-  align-items: center;
-  max-width: 1400px;
+  text-align: center;
+  max-width: 1200px;
   margin: 0 auto;
 
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-    gap: 40px;
+  @media (max-width: 768px) {
     padding: 100px 20px 60px;
   }
 `;
 
 const HeroContent = styled.div`
   animation: ${fadeInUp} 0.8s ease-out;
+  margin-bottom: 60px;
 `;
 
 const HeroTitle = styled.h1`
@@ -187,6 +183,7 @@ const HeroTitle = styled.h1`
   font-weight: 700;
   line-height: 1.1;
   margin-bottom: 24px;
+  text-align: center;
 
   .highlight {
     background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
@@ -206,6 +203,19 @@ const HeroSubtitle = styled.p`
   margin-bottom: 32px;
   line-height: 1.6;
   transition: color 0.3s ease;
+  text-align: center;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+`;
+
+const CTAGroup = styled.div`
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 60px;
 `;
 
 const CTAButton = styled(Link)`
@@ -213,287 +223,153 @@ const CTAButton = styled(Link)`
   align-items: center;
   gap: 8px;
   padding: 16px 32px;
-  background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
+  background: ${(props) => (props.theme === "dark" ? "#374151" : "#1e293b")};
   color: #ffffff;
   text-decoration: none;
   border-radius: 12px;
   font-weight: 600;
   font-size: 1.1rem;
   transition: all 0.3s;
-  margin-bottom: 32px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
   &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 35px rgba(175, 23, 99, 0.4);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
   }
 `;
 
-const SocialProof = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-`;
-
-const Avatars = styled.div`
-  display: flex;
-  align-items: center;
-
-  .avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 2px solid
-      ${(props) => (props.theme === "dark" ? "#232837" : "#e2e8f0")};
-    margin-left: -8px;
-
-    &:first-child {
-      margin-left: 0;
-    }
-  }
-`;
-
-const SocialText = styled.p`
+const SignUpLink = styled(Link)`
   color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
-  font-size: 0.95rem;
+  text-decoration: none;
+  font-weight: 500;
   transition: color 0.3s ease;
-`;
 
-const Badge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: ${(props) =>
-    props.theme === "dark"
-      ? "rgba(255, 255, 255, 0.1)"
-      : "rgba(175, 23, 99, 0.1)"};
-  border-radius: 20px;
-  font-size: 0.85rem;
-  color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
-  transition: all 0.3s ease;
-`;
-
-const FloatingCircles = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 1;
-  display: ${(props) => (props.theme === "dark" ? "block" : "none")};
-
-  .circle-1 {
-    position: absolute;
-    width: 400px;
-    height: 400px;
-    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
-    border-radius: 50%;
-    top: 5%;
-    left: 5%;
-    opacity: 0.15;
-    filter: blur(60px);
-    animation: float 8s ease-in-out infinite;
-    box-shadow: 0 0 100px rgba(175, 23, 99, 0.3);
-  }
-
-  .circle-2 {
-    position: absolute;
-    width: 300px;
-    height: 300px;
-    background: linear-gradient(135deg, #5f4bfa 0%, #af1763 100%);
-    border-radius: 50%;
-    top: 50%;
-    right: 10%;
-    opacity: 0.12;
-    filter: blur(50px);
-    animation: float 10s ease-in-out infinite reverse;
-    box-shadow: 0 0 80px rgba(95, 75, 250, 0.3);
-  }
-
-  .circle-3 {
-    position: absolute;
-    width: 350px;
-    height: 350px;
-    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 50%, #af1763 100%);
-    border-radius: 50%;
-    bottom: 15%;
-    left: 15%;
-    opacity: 0.1;
-    filter: blur(70px);
-    animation: float 12s ease-in-out infinite;
-    box-shadow: 0 0 120px rgba(175, 23, 99, 0.2);
-  }
-
-  .circle-4 {
-    position: absolute;
-    width: 200px;
-    height: 200px;
-    background: linear-gradient(135deg, #5f4bfa 0%, #af1763 50%, #5f4bfa 100%);
-    border-radius: 50%;
-    top: 30%;
-    left: 60%;
-    opacity: 0.08;
-    filter: blur(40px);
-    animation: float 15s ease-in-out infinite;
-    box-shadow: 0 0 60px rgba(95, 75, 250, 0.2);
-  }
-
-  .circle-5 {
-    position: absolute;
-    width: 150px;
-    height: 150px;
-    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
-    border-radius: 50%;
-    bottom: 40%;
-    right: 25%;
-    opacity: 0.06;
-    filter: blur(35px);
-    animation: float 18s ease-in-out infinite reverse;
-    box-shadow: 0 0 50px rgba(175, 23, 99, 0.15);
-  }
-
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0px) rotate(0deg) scale(1);
-    }
-    25% {
-      transform: translateY(-30px) rotate(90deg) scale(1.05);
-    }
-    50% {
-      transform: translateY(15px) rotate(180deg) scale(0.95);
-    }
-    75% {
-      transform: translateY(-20px) rotate(270deg) scale(1.02);
-    }
+  &:hover {
+    color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
   }
 `;
 
-const DemoCard = styled.div`
-  background: ${(props) =>
-    props.theme === "dark" ? "rgba(255, 255, 255, 0.08)" : "#1e293b"};
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: ${(props) =>
-    props.theme === "dark"
-      ? "0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)"
-      : "0 20px 60px rgba(0, 0, 0, 0.1)"};
+const VideoSection = styled.div`
   animation: ${fadeInUp} 0.8s ease-out 0.2s both;
   position: relative;
-  border: ${(props) =>
+  max-width: 1200px;
+  margin: 0 auto;
+`;
+
+const VideoCard = styled.div`
+  background: ${(props) =>
+    props.theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "#ffffff"};
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: ${(props) =>
     props.theme === "dark"
-      ? "1px solid rgba(255, 255, 255, 0.15)"
-      : "1px solid #374151"};
-  backdrop-filter: ${(props) =>
-    props.theme === "dark" ? "blur(20px)" : "none"};
+      ? "0 8px 32px rgba(0, 0, 0, 0.3)"
+      : "0 20px 60px rgba(0, 0, 0, 0.1)"};
   transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 25px 80px rgba(0, 0, 0, 0.15);
+  }
+`;
+
+const VideoPlayer = styled.div`
+  width: 100%;
+  height: 700px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 20px;
 
   &::before {
     content: "";
     position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
-    border-radius: 18px;
-    z-index: -1;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="rgba(255,255,255,0.2)"/><polygon points="35,25 35,75 75,50" fill="white"/></svg>')
+      center/120px no-repeat;
   }
 `;
 
-const DemoHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-`;
+const AbstractCard = styled.div`
+  width: 100%;
+  height: 200px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
 
-const DemoDots = styled.div`
-  display: flex;
-  gap: 6px;
-
-  .dot {
-    width: 12px;
-    height: 12px;
+  &::before {
+    content: "";
+    position: absolute;
+    top: 20%;
+    left: 20%;
+    right: 20%;
+    bottom: 20%;
+    background: linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.3) 0%,
+      rgba(255, 255, 255, 0.1) 100%
+    );
     border-radius: 50%;
+    transform: rotate(45deg);
+  }
 
-    &.red {
-      background: #ef4444;
-    }
-    &.yellow {
-      background: #f59e0b;
-    }
-    &.green {
-      background: #10b981;
-    }
+  &::after {
+    content: "";
+    position: absolute;
+    top: 10%;
+    right: 10%;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   }
 `;
 
-const LinkedInLogo = styled.div`
-  width: 24px;
-  height: 24px;
-  background: #0077b5;
-  border-radius: 4px;
+const FloatingMic = styled.div`
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 0.8rem;
-  font-weight: bold;
+  font-size: 20px;
+  box-shadow: 0 8px 20px rgba(175, 23, 99, 0.3);
+  z-index: 10;
 `;
 
-const DemoContent = styled.div`
-  color: #ffffff;
-  transition: color 0.3s ease;
-`;
-
-const DemoProfile = styled.div`
+const VideoInfo = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-
-  .profile-pic {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-weight: bold;
-  }
-
-  .profile-info {
-    .name {
-      font-weight: 600;
-      font-size: 1rem;
-      color: #ffffff;
-      transition: color 0.3s ease;
-    }
-    .title {
-      color: #ffffff;
-      font-size: 0.9rem;
-      transition: color 0.3s ease;
-    }
-  }
+  justify-content: space-between;
+  color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
 `;
 
-const DemoText = styled.div`
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: #ffffff;
-  transition: color 0.3s ease;
-
-  p {
-    margin-bottom: 12px;
-  }
+const VideoDuration = styled.span`
+  font-size: 0.9rem;
+  color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
 `;
 
-const Features = styled.section`
+const TestimonialsSection = styled.section`
   padding: 80px 40px;
   background: ${(props) => (props.theme === "dark" ? "#232837" : "#ffffff")};
   transition: background 0.3s ease;
@@ -503,7 +379,7 @@ const Features = styled.section`
   }
 `;
 
-const FeaturesContainer = styled.div`
+const TestimonialsContainer = styled.div`
   max-width: 1200px;
   margin: 0 auto;
 `;
@@ -518,31 +394,18 @@ const SectionTitle = styled.h2`
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 16px;
-
-  .highlight {
-    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-`;
-
-const SectionSubtitle = styled.p`
-  font-size: 1.1rem;
-  color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
-  max-width: 600px;
-  margin: 0 auto;
+  color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
   transition: color 0.3s ease;
 `;
 
-const FeaturesGrid = styled.div`
+const TestimonialsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
   gap: 32px;
-  margin-bottom: 60px;
+  margin-bottom: 40px;
 `;
 
-const FeatureCard = styled.div`
+const TestimonialCard = styled.div`
   background: ${(props) => (props.theme === "dark" ? "#191c24" : "#f8fafc")};
   border-radius: 16px;
   padding: 32px;
@@ -558,7 +421,7 @@ const FeatureCard = styled.div`
   }
 `;
 
-const FeatureIcon = styled.div`
+const CompanyLogo = styled.div`
   width: 60px;
   height: 60px;
   background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
@@ -566,50 +429,24 @@ const FeatureIcon = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
-  margin-bottom: 24px;
-`;
-
-const FeatureTitle = styled.h3`
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
-  transition: color 0.3s ease;
-`;
-
-const FeatureDescription = styled.p`
-  color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
-  line-height: 1.6;
-  transition: color 0.3s ease;
-`;
-
-const TestimonialSection = styled.div`
-  background: ${(props) => (props.theme === "dark" ? "#191c24" : "#f1f5f9")};
-  border-radius: 20px;
-  padding: 40px;
-  text-align: center;
-  animation: ${fadeInUp} 0.8s ease-out;
-  border: 1px solid
-    ${(props) => (props.theme === "dark" ? "#374151" : "#e2e8f0")};
-  transition: all 0.3s ease;
+  font-size: 1.2rem;
+  color: white;
+  font-weight: bold;
+  margin-bottom: 20px;
 `;
 
 const TestimonialText = styled.p`
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-style: italic;
   color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
-  margin-bottom: 24px;
-  max-width: 800px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-bottom: 20px;
+  line-height: 1.6;
   transition: color 0.3s ease;
 `;
 
 const TestimonialAuthor = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 12px;
 
   .author-pic {
@@ -625,8 +462,6 @@ const TestimonialAuthor = styled.div`
   }
 
   .author-info {
-    text-align: left;
-
     .name {
       font-weight: 600;
       color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
@@ -641,91 +476,20 @@ const TestimonialAuthor = styled.div`
   }
 `;
 
-const StatsSection = styled.section`
-  padding: 80px 40px;
-  background: ${(props) =>
-    props.theme === "dark"
-      ? "linear-gradient(135deg, #10121a 0%, #191c24 100%)"
-      : "linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)"};
-  transition: background 0.3s ease;
-
-  @media (max-width: 768px) {
-    padding: 60px 20px;
-  }
-`;
-
-const StatsContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 40px;
-  text-align: center;
-`;
-
-const StatCard = styled.div`
-  animation: ${fadeInUp} 0.8s ease-out;
-`;
-
-const StatNumber = styled.div`
-  font-size: 3rem;
-  font-weight: 700;
-  background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 12px;
-`;
-
-const StatLabel = styled.p`
-  color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
-  font-size: 1.1rem;
-  transition: color 0.3s ease;
-`;
-
-const CTA = styled.section`
-  padding: 80px 40px;
-  text-align: center;
-  background: ${(props) => (props.theme === "dark" ? "#232837" : "#ffffff")};
-  transition: background 0.3s ease;
-
-  @media (max-width: 768px) {
-    padding: 60px 20px;
-  }
-`;
-
-const CTAContainer = styled.div`
-  max-width: 600px;
-  margin: 0 auto;
-  animation: ${fadeInUp} 0.8s ease-out;
-`;
-
-const CTATitle = styled.h2`
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-
-  .highlight {
-    background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-`;
-
-const CTASubtitle = styled.p`
-  font-size: 1.1rem;
-  color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
-  margin-bottom: 32px;
-  line-height: 1.6;
-  transition: color 0.3s ease;
-`;
-
-const CTAGroup = styled.div`
+const CompanyLogos = styled.div`
   display: flex;
-  gap: 16px;
   justify-content: center;
+  align-items: center;
+  gap: 40px;
+  margin-top: 40px;
   flex-wrap: wrap;
+
+  .company-logo {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
+    transition: color 0.3s ease;
+  }
 `;
 
 const Footer = styled.footer`
@@ -738,6 +502,296 @@ const Footer = styled.footer`
   transition: all 0.3s ease;
 `;
 
+const FeaturesSection = styled.section`
+  padding: 80px 40px;
+  background: ${(props) => (props.theme === "dark" ? "#1a1d26" : "#f1f5f9")};
+  transition: background 0.3s ease;
+
+  @media (max-width: 768px) {
+    padding: 60px 20px;
+  }
+`;
+
+const FeaturesContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+`;
+
+const FeaturesGrid = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 60px;
+  flex-wrap: wrap;
+  position: relative;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    gap: 40px;
+  }
+`;
+
+const FeatureStep = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  padding: 24px;
+  border: 1px solid
+    ${(props) => (props.theme === "dark" ? "#2d3748" : "#e2e8f0")};
+  border-radius: 20px;
+  background: ${(props) =>
+    props.theme === "dark"
+      ? "rgba(255, 255, 255, 0.03)"
+      : "rgba(255, 255, 255, 0.9)"};
+  transition: all 0.3s ease;
+  box-shadow: ${(props) =>
+    props.theme === "dark"
+      ? "0 4px 20px rgba(0, 0, 0, 0.2)"
+      : "0 8px 32px rgba(0, 0, 0, 0.08)"};
+  backdrop-filter: blur(10px);
+
+  &:hover {
+    border-color: ${(props) =>
+      props.theme === "dark" ? "#4a5568" : "#cbd5e1"};
+    transform: translateY(-4px);
+    box-shadow: ${(props) =>
+      props.theme === "dark"
+        ? "0 12px 40px rgba(0, 0, 0, 0.3)"
+        : "0 16px 48px rgba(0, 0, 0, 0.12)"};
+  }
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+    padding: 28px;
+  }
+`;
+
+const FeatureNumber = styled.div`
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 8px 20px rgba(175, 23, 99, 0.3);
+  flex-shrink: 0;
+
+  @media (max-width: 1024px) {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+`;
+
+const FeatureContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 200px;
+
+  @media (max-width: 1024px) {
+    max-width: 250px;
+  }
+`;
+
+const FeatureTitle = styled.h3`
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
+  transition: color 0.3s ease;
+  margin: 0;
+`;
+
+const FeatureDescription = styled.p`
+  color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
+  line-height: 1.5;
+  transition: color 0.3s ease;
+  font-size: 0.9rem;
+  margin: 0;
+`;
+
+const Arrow = styled.div`
+  width: 40px;
+  height: 2px;
+  background: linear-gradient(90deg, #af1763 0%, #5f4bfa 100%);
+  position: relative;
+  margin: 0 10px;
+  flex-shrink: 0;
+  align-self: center;
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: -6px;
+    top: -3px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid #5f4bfa;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+  }
+
+  @media (max-width: 1024px) {
+    transform: rotate(90deg);
+    margin: 20px 0;
+  }
+`;
+
+const WigglyArrow = styled.div`
+  width: 40px;
+  height: 20px;
+  position: relative;
+  margin: 0 10px;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, #af1763 0%, #5f4bfa 100%);
+    mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 20"><path d="M0,10 Q5,5 10,10 T20,10 T30,10 T40,10" stroke="black" stroke-width="2" fill="none"/></svg>');
+    mask-size: contain;
+    mask-repeat: no-repeat;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: -6px;
+    top: 8px;
+    width: 0;
+    height: 0;
+    border-left: 8px solid #5f4bfa;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+  }
+
+  @media (max-width: 1024px) {
+    transform: rotate(90deg);
+    margin: 20px 0;
+  }
+`;
+
+const BenefitsSection = styled.section`
+  padding: 80px 40px;
+  background: ${(props) => (props.theme === "dark" ? "#232837" : "#ffffff")};
+  transition: background 0.3s ease;
+
+  @media (max-width: 768px) {
+    padding: 60px 20px;
+  }
+`;
+
+const BenefitsContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+`;
+
+const BenefitsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-top: 40px;
+`;
+
+const BenefitItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: ${(props) => (props.theme === "dark" ? "#191c24" : "#f8fafc")};
+  border-radius: 12px;
+  border: 1px solid
+    ${(props) => (props.theme === "dark" ? "#374151" : "#e2e8f0")};
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateY(-2px);
+    border-color: #af1763;
+  }
+`;
+
+const BenefitCheck = styled.div`
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, #af1763 0%, #5f4bfa 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
+const BenefitText = styled.span`
+  font-weight: 500;
+  color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
+  transition: color 0.3s ease;
+`;
+
+const BuiltForSection = styled.section`
+  padding: 60px 40px;
+  background: ${(props) => (props.theme === "dark" ? "#191c24" : "#f8fafc")};
+  transition: background 0.3s ease;
+
+  @media (max-width: 768px) {
+    padding: 40px 20px;
+  }
+`;
+
+const BuiltForContainer = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+`;
+
+const BuiltForGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 24px;
+  margin-top: 40px;
+`;
+
+const BuiltForCard = styled.div`
+  background: ${(props) => (props.theme === "dark" ? "#232837" : "#ffffff")};
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid
+    ${(props) => (props.theme === "dark" ? "#374151" : "#e2e8f0")};
+  transition: all 0.3s;
+
+  &:hover {
+    transform: translateY(-3px);
+    border-color: #af1763;
+  }
+`;
+
+const BuiltForTitle = styled.h4`
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: ${(props) => (props.theme === "dark" ? "#ffffff" : "#1e293b")};
+  transition: color 0.3s ease;
+`;
+
+const BuiltForDescription = styled.p`
+  font-size: 0.9rem;
+  color: ${(props) => (props.theme === "dark" ? "#9ca3af" : "#64748b")};
+  line-height: 1.5;
+  transition: color 0.3s ease;
+`;
+
 const LandingPage = () => {
   const [theme, setTheme] = useState("light");
 
@@ -747,13 +801,6 @@ const LandingPage = () => {
 
   return (
     <Container theme={theme}>
-      <FloatingCircles theme={theme}>
-        <div className="circle-1"></div>
-        <div className="circle-2"></div>
-        <div className="circle-3"></div>
-        <div className="circle-4"></div>
-        <div className="circle-5"></div>
-      </FloatingCircles>
       <Header theme={theme}>
         <Logo theme={theme}>
           <div className="logo-icon">HR</div>
@@ -761,9 +808,9 @@ const LandingPage = () => {
         </Logo>
         <Nav>
           <NavLink theme={theme}>Features</NavLink>
-          <NavLink theme={theme}>For HR Teams</NavLink>
           <NavLink theme={theme}>Pricing</NavLink>
-          <NavLink theme={theme}>Resources</NavLink>
+          <NavLink theme={theme}>About</NavLink>
+          <NavLink theme={theme}>Support</NavLink>
         </Nav>
         <HeaderButtons>
           <ThemeToggle theme={theme} onClick={toggleTheme}>
@@ -781,176 +828,219 @@ const LandingPage = () => {
       <Hero>
         <HeroContent>
           <HeroTitle>
-            A Complete <span className="highlight">HR System</span>. Not just
-            another dashboard.
+            Filter, Interview, Hire{" "}
+            <span className="highlight">All on Autopilot</span>
           </HeroTitle>
           <HeroSubtitle theme={theme}>
-            Manage candidates, track applications, automate onboarding, and grow
-            your team - all in one place.
+            Streamline hiring from 500+ applicants to 5 top candidates without
+            lifting a finger. Hirvis screens resumes, conducts initial
+            interviews over voice calls, and gives you fit-based assessments so
+            your team only steps in for the final round.
           </HeroSubtitle>
-          <CTAButton to="/login">Get Started Free →</CTAButton>
-
-          <SocialProof>
-            <Avatars theme={theme}>
-              <div className="avatar" style={{ background: "#af1763" }}>
-                👩
-              </div>
-              <div className="avatar" style={{ background: "#5f4bfa" }}>
-                👨
-              </div>
-              <div className="avatar" style={{ background: "#10b981" }}>
-                👩
-              </div>
-            </Avatars>
-            <SocialText theme={theme}>
-              Trusted by 500+ HR professionals
-            </SocialText>
-          </SocialProof>
-
-          <Badge theme={theme}>⭐ Featured on Top HR Platforms</Badge>
+          <CTAGroup>
+            <CTAButton to="/login">Book a demo</CTAButton>
+            <SignUpLink to="/signup" theme={theme}>
+              Sign up—it's free
+            </SignUpLink>
+          </CTAGroup>
         </HeroContent>
 
-        <DemoCard theme={theme}>
-          <DemoHeader>
-            <DemoDots>
-              <div className="dot red"></div>
-              <div className="dot yellow"></div>
-              <div className="dot green"></div>
-            </DemoDots>
-            <LinkedInLogo>in</LinkedInLogo>
-          </DemoHeader>
-
-          <DemoContent theme={theme}>
-            <DemoProfile theme={theme}>
-              <div className="profile-pic">HR</div>
-              <div className="profile-info">
-                <div className="name">Sophia Williams</div>
-                <div className="title">HR Manager @ TechCorp • 2h</div>
-              </div>
-            </DemoProfile>
-
-            <DemoText theme={theme}>
-              <p>
-                Just completed our quarterly hiring sprint using Hirvis. The
-                results? 🤯
-              </p>
-              <p>• 50% faster candidate screening</p>
-              <p>• 3x more qualified applicants</p>
-              <p>• Automated onboarding reduced admin time by 70%</p>
-              <p>
-                Our team can now focus on what matters most - building
-                relationships with candidates.
-              </p>
-              <p>
-                Stop juggling spreadsheets. Start building your dream team. 🚀
-              </p>
-            </DemoText>
-          </DemoContent>
-        </DemoCard>
+        <VideoSection>
+          <VideoCard theme={theme}>
+            <VideoPlayer>{/* Video placeholder */}</VideoPlayer>
+            <VideoInfo theme={theme}>
+              <span>Interactive screening call</span>
+              <VideoDuration theme={theme}>1:36</VideoDuration>
+            </VideoInfo>
+          </VideoCard>
+        </VideoSection>
       </Hero>
 
-      <Features theme={theme}>
+      <FeaturesSection theme={theme}>
         <FeaturesContainer>
           <SectionHeader>
-            <SectionTitle>
-              How Hirvis helps you <span className="highlight">grow</span>{" "}
-              without burning out
-            </SectionTitle>
-            <SectionSubtitle theme={theme}>
-              Three simple steps to transform your HR process and build a
-              world-class team
-            </SectionSubtitle>
+            <SectionTitle theme={theme}>How It Works</SectionTitle>
           </SectionHeader>
 
           <FeaturesGrid>
-            <FeatureCard theme={theme}>
-              <FeatureIcon>📝</FeatureIcon>
-              <FeatureTitle theme={theme}>
-                Smart Candidate Management
-              </FeatureTitle>
-              <FeatureDescription theme={theme}>
-                Upload resumes, track applications, and manage your entire
-                hiring pipeline in one intuitive dashboard.
-              </FeatureDescription>
-            </FeatureCard>
+            <FeatureStep theme={theme}>
+              <FeatureNumber>1</FeatureNumber>
+              <FeatureContent>
+                <FeatureTitle theme={theme}>Upload Resumes</FeatureTitle>
+                <FeatureDescription theme={theme}>
+                  Drag and drop all applications. No format limits, no extra
+                  setup.
+                </FeatureDescription>
+              </FeatureContent>
+            </FeatureStep>
 
-            <FeatureCard theme={theme}>
-              <FeatureIcon>🤖</FeatureIcon>
-              <FeatureTitle theme={theme}>AI-Powered Screening</FeatureTitle>
-              <FeatureDescription theme={theme}>
-                Our AI assistant helps you identify the best candidates,
-                schedule interviews, and automate routine tasks.
-              </FeatureDescription>
-            </FeatureCard>
+            <Arrow />
 
-            <FeatureCard theme={theme}>
-              <FeatureIcon>📊</FeatureIcon>
-              <FeatureTitle theme={theme}>Analytics & Insights</FeatureTitle>
-              <FeatureDescription theme={theme}>
-                Track your hiring metrics, identify bottlenecks, and optimize
-                your recruitment process with data-driven insights.
-              </FeatureDescription>
-            </FeatureCard>
+            <FeatureStep theme={theme}>
+              <FeatureNumber>2</FeatureNumber>
+              <FeatureContent>
+                <FeatureTitle theme={theme}>Automatic Filtering</FeatureTitle>
+                <FeatureDescription theme={theme}>
+                  Our engine parses every resume, ranks candidates based on
+                  relevance, and filters out noise.
+                </FeatureDescription>
+              </FeatureContent>
+            </FeatureStep>
+
+            <Arrow />
+
+            <FeatureStep theme={theme}>
+              <FeatureNumber>3</FeatureNumber>
+              <FeatureContent>
+                <FeatureTitle theme={theme}>AI-Led Interviews</FeatureTitle>
+                <FeatureDescription theme={theme}>
+                  Shortlisted candidates are auto-called and interviewed with
+                  smart, dynamic questions tailored to the role.
+                </FeatureDescription>
+              </FeatureContent>
+            </FeatureStep>
+
+            <Arrow />
+
+            <FeatureStep theme={theme}>
+              <FeatureNumber>4</FeatureNumber>
+              <FeatureContent>
+                <FeatureTitle theme={theme}>Fit Score & Insights</FeatureTitle>
+                <FeatureDescription theme={theme}>
+                  Get a ranked list of top candidates with detailed fit reports,
+                  call transcripts, and recommended next steps.
+                </FeatureDescription>
+              </FeatureContent>
+            </FeatureStep>
           </FeaturesGrid>
-
-          <TestimonialSection theme={theme}>
-            <TestimonialText theme={theme}>
-              "Hirvis transformed our entire hiring process. We went from
-              drowning in spreadsheets to having a streamlined, efficient system
-              that actually helps us find better candidates."
-            </TestimonialText>
-            <TestimonialAuthor theme={theme}>
-              <div className="author-pic">MJ</div>
-              <div className="author-info">
-                <div className="name">Maria Johnson</div>
-                <div className="title">Head of HR, TechStartup</div>
-              </div>
-            </TestimonialAuthor>
-          </TestimonialSection>
         </FeaturesContainer>
-      </Features>
+      </FeaturesSection>
 
-      <StatsSection theme={theme}>
-        <StatsContainer>
-          <StatCard>
-            <StatNumber>500+</StatNumber>
-            <StatLabel theme={theme}>HR professionals trust Hirvis</StatLabel>
-          </StatCard>
-          <StatCard>
-            <StatNumber>10K+</StatNumber>
-            <StatLabel theme={theme}>
-              candidates screened successfully
-            </StatLabel>
-          </StatCard>
-          <StatCard>
-            <StatNumber>50%</StatNumber>
-            <StatLabel theme={theme}>faster hiring process</StatLabel>
-          </StatCard>
-          <StatCard>
-            <StatNumber>95%</StatNumber>
-            <StatLabel theme={theme}>satisfaction rate</StatLabel>
-          </StatCard>
-        </StatsContainer>
-      </StatsSection>
+      <BenefitsSection theme={theme}>
+        <BenefitsContainer>
+          <SectionHeader>
+            <SectionTitle theme={theme}>Why Teams Love It</SectionTitle>
+          </SectionHeader>
 
-      <CTA theme={theme}>
-        <CTAContainer>
-          <CTATitle>
-            Ready to <span className="highlight">transform</span> your HR
-            process?
-          </CTATitle>
-          <CTASubtitle theme={theme}>
-            Join hundreds of HR professionals who are already building better
-            teams with Hirvis. Start your free trial today.
-          </CTASubtitle>
-          <CTAGroup>
-            <CTAButton to="/login">Start Free Trial →</CTAButton>
-            <Button className="secondary" theme={theme}>
-              Watch Demo
-            </Button>
-          </CTAGroup>
-        </CTAContainer>
-      </CTA>
+          <BenefitsGrid>
+            <BenefitItem theme={theme}>
+              <BenefitCheck>✓</BenefitCheck>
+              <BenefitText theme={theme}>Save 80% of Hiring Time</BenefitText>
+            </BenefitItem>
+            <BenefitItem theme={theme}>
+              <BenefitCheck>✓</BenefitCheck>
+              <BenefitText theme={theme}>
+                Zero Bias, 100% Consistency
+              </BenefitText>
+            </BenefitItem>
+            <BenefitItem theme={theme}>
+              <BenefitCheck>✓</BenefitCheck>
+              <BenefitText theme={theme}>
+                Real Conversations, Not Just Data
+              </BenefitText>
+            </BenefitItem>
+            <BenefitItem theme={theme}>
+              <BenefitCheck>✓</BenefitCheck>
+              <BenefitText theme={theme}>
+                Better Candidates, Faster Decisions
+              </BenefitText>
+            </BenefitItem>
+          </BenefitsGrid>
+        </BenefitsContainer>
+      </BenefitsSection>
+
+      <BuiltForSection theme={theme}>
+        <BuiltForContainer>
+          <SectionHeader>
+            <SectionTitle theme={theme}>Built for:</SectionTitle>
+          </SectionHeader>
+
+          <BuiltForGrid>
+            <BuiltForCard theme={theme}>
+              <BuiltForTitle theme={theme}>Busy HR Teams</BuiltForTitle>
+              <BuiltForDescription theme={theme}>
+                Streamline your hiring process and focus on what matters most.
+              </BuiltForDescription>
+            </BuiltForCard>
+            <BuiltForCard theme={theme}>
+              <BuiltForTitle theme={theme}>
+                Founders doing their own hiring
+              </BuiltForTitle>
+              <BuiltForDescription theme={theme}>
+                Scale your hiring without scaling your time investment.
+              </BuiltForDescription>
+            </BuiltForCard>
+            <BuiltForCard theme={theme}>
+              <BuiltForTitle theme={theme}>
+                Recruitment agencies looking to scale screening
+              </BuiltForTitle>
+              <BuiltForDescription theme={theme}>
+                Handle more clients and candidates with AI-powered efficiency.
+              </BuiltForDescription>
+            </BuiltForCard>
+          </BuiltForGrid>
+        </BuiltForContainer>
+      </BuiltForSection>
+
+      <TestimonialsSection theme={theme}>
+        <TestimonialsContainer>
+          <SectionHeader>
+            <SectionTitle theme={theme}>What our customers say</SectionTitle>
+          </SectionHeader>
+
+          <TestimonialsGrid>
+            <TestimonialCard theme={theme}>
+              <CompanyLogo>T</CompanyLogo>
+              <TestimonialText theme={theme}>
+                "Screened shortened our time-to-hire by 8 weeks"
+              </TestimonialText>
+              <TestimonialAuthor theme={theme}>
+                <div className="author-pic">KT</div>
+                <div className="author-info">
+                  <div className="name">Kyara Tan</div>
+                  <div className="title">Head of People & Culture</div>
+                </div>
+              </TestimonialAuthor>
+            </TestimonialCard>
+
+            <TestimonialCard theme={theme}>
+              <CompanyLogo>G</CompanyLogo>
+              <TestimonialText theme={theme}>
+                "It actually unlocked a whole world of possibility for us for
+                what voice AI can do for interviewing"
+              </TestimonialText>
+              <TestimonialAuthor theme={theme}>
+                <div className="author-pic">SY</div>
+                <div className="author-info">
+                  <div className="name">Sung Yong Yi</div>
+                  <div className="title">CEO</div>
+                </div>
+              </TestimonialAuthor>
+            </TestimonialCard>
+
+            <TestimonialCard theme={theme}>
+              <CompanyLogo>G</CompanyLogo>
+              <TestimonialText theme={theme}>
+                "In the past 1.5 months, we saved 28 hours from CV and Phone
+                screening processes with Ryan as our trusted 'third' recruiter"
+              </TestimonialText>
+              <TestimonialAuthor theme={theme}>
+                <div className="author-pic">MF</div>
+                <div className="author-info">
+                  <div className="name">Matthew Foo</div>
+                  <div className="title">Senior HR Specialist</div>
+                </div>
+              </TestimonialAuthor>
+            </TestimonialCard>
+          </TestimonialsGrid>
+
+          <CompanyLogos theme={theme}>
+            <div className="company-logo">Terrascope</div>
+            <div className="company-logo">Grain</div>
+            <div className="company-logo">GenScript</div>
+          </CompanyLogos>
+        </TestimonialsContainer>
+      </TestimonialsSection>
 
       <Footer theme={theme}>
         <p>

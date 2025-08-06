@@ -8,7 +8,7 @@ const Container = styled.div`
   padding: 40px 32px 32px 32px;
   max-width: 1200px;
   width: 100%;
-  background-color: ${({ theme }) => theme.colors.background};
+  background-color: #191c24;
   min-height: 100vh;
 
   @media (max-width: 1024px) {
@@ -26,12 +26,12 @@ const Header = styled.div`
 const Title = styled.h1`
   font-size: 2.2rem;
   font-weight: 700;
-  color: ${({ theme }) => theme.colors.text.primary};
+  color: #ffffff;
   margin: 0;
 `;
 
 const Subtitle = styled.p`
-  color: ${({ theme }) => theme.colors.text.secondary};
+  color: #bfd4d1;
   font-size: 1.1rem;
   margin: 0;
 `;
@@ -50,7 +50,7 @@ const SearchBar = styled.input`
   }
   &:focus {
     outline: none;
-    border-color: #af1763;
+    border-color: #5f4bfa;
   }
 `;
 
@@ -61,26 +61,27 @@ const Grid = styled.div`
 `;
 
 const shine = keyframes`
-  0% { box-shadow: 0 0 0 0 #af1763, 0 0 6px 2px #af1763; }
-  50% { box-shadow: 0 0 0 0 #af1763, 0 0 12px 4px #af1763; }
-  100% { box-shadow: 0 0 0 0 #af1763, 0 0 6px 2px #af1763; }
+  0% { box-shadow: 0 0 0 0 #5f4bfa, 0 0 6px 2px #5f4bfa; }
+  50% { box-shadow: 0 0 0 0 #5f4bfa, 0 0 12px 4px #5f4bfa; }
+  100% { box-shadow: 0 0 0 0 #5f4bfa, 0 0 6px 2px #5f4bfa; }
 `;
 
 const Card = styled.div`
-  background: ${({ theme }) => theme.colors.cardBackground};
+  background: #232837;
   border-radius: 16px;
-  border: 1.5px solid ${({ theme }) => theme.colors.primary};
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 0 0 0 #af1763;
+  border: 1.5px solid;
+  border-image: linear-gradient(135deg, #af1763, #5f4bfa) 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), 0 0 0 0 #5f4bfa;
   animation: ${shine} 2.5s infinite;
   padding: 32px 28px 24px 28px;
-  color: ${({ theme }) => theme.colors.text.primary};
+  color: #ffffff;
   display: flex;
   flex-direction: column;
   gap: 12px;
   position: relative;
   transition: box-shadow 0.2s;
   &:hover {
-    box-shadow: 0 0 0 0 #af1763, 0 0 16px 6px #af1763;
+    box-shadow: 0 0 0 0 #5f4bfa, 0 0 16px 6px #5f4bfa;
   }
 `;
 
@@ -88,11 +89,11 @@ const Name = styled.h2`
   font-size: 1.3rem;
   font-weight: 700;
   margin: 0 0 4px 0;
-  color: ${({ theme }) => theme.colors.text.primary};
+  color: #ffffff;
 `;
 
 const JobTitle = styled.div`
-  color: ${({ theme }) => theme.colors.text.secondary};
+  color: #bfd4d1;
   font-size: 1.05rem;
   font-weight: 500;
   margin-bottom: 4px;

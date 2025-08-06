@@ -56,6 +56,19 @@ app.post(
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
+// Check if Groq API key is configured
+if (
+  !process.env.GROQ_API_KEY ||
+  process.env.GROQ_API_KEY === "your_groq_api_key_here"
+) {
+  console.warn(
+    "⚠️  GROQ_API_KEY not configured. Resume processing will not work."
+  );
+  console.warn(
+    "Please set GROQ_API_KEY in your .env file to use resume processing features."
+  );
+}
+
 // Stripe payment endpoints
 app.post("/api/create-payment-intent", async (req, res) => {
   try {
@@ -118,18 +131,42 @@ app.post("/api/create-checkout-session", async (req, res) => {
 
 app.post("/api/groq", async (req, res) => {
   try {
+    console.log("📨 Received Groq API request");
+
+    // Check if API key is configured
+    if (
+      !process.env.GROQ_API_KEY ||
+      process.env.GROQ_API_KEY === "your_groq_api_key_here"
+    ) {
+      console.error("❌ GROQ_API_KEY not configured");
+      return res.status(500).json({
+        error:
+          "Groq API key not configured. Please set GROQ_API_KEY in your .env file.",
+      });
+    }
+
     const { messages } = req.body;
+
+    if (!messages || !Array.isArray(messages)) {
+      console.error("❌ Invalid messages format:", messages);
+      return res.status(400).json({ error: "Invalid messages format" });
+    }
+
+    console.log("🔄 Calling Groq API with model...");
     const chatCompletion = await groq.chat.completions.create({
       messages,
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
-      temperature: 1,
+      model: "llama-3.3-70b-versatile", // Updated to a working model
+      temperature: 0.7,
       max_completion_tokens: 1024,
       top_p: 1,
       stream: false,
       stop: null,
     });
+
+    console.log("✅ Groq API responded successfully");
     res.json(chatCompletion);
   } catch (err) {
+    console.error("❌ Groq API error:", err.message);
     res.status(500).json({ error: err.message });
   }
 });

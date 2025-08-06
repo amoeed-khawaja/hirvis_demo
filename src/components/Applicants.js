@@ -43,10 +43,19 @@ async function extractTextFromPDF(file) {
 // Function to parse Groq API response
 function parseGroqCandidateString(str) {
   try {
+    console.log("🔍 Parsing Groq response:", str);
+
+    if (!str || str.trim() === "") {
+      console.error("❌ Empty or null response string");
+      return null;
+    }
+
     const parts = str.split("|").map((s) => s.trim());
+    console.log("📊 Parsed parts:", parts);
+
     if (parts.length >= 8) {
-      return {
-        name: parts[0] || "N/A",
+      const candidateData = {
+        name: parts[0] || "Unknown",
         email: parts[1] || "N/A",
         phone: parts[2] || "N/A",
         score: parseInt(parts[3]) || 0,
@@ -55,12 +64,20 @@ function parseGroqCandidateString(str) {
         degree: parts[6] || "N/A",
         notes: parts[7] || "N/A",
       };
+
+      console.log("✅ Successfully parsed candidate data:", candidateData);
+      return candidateData;
     } else {
-      console.warn("Invalid Groq response format:", str);
+      console.warn(
+        "❌ Invalid Groq response format - expected 8 parts, got",
+        parts.length
+      );
+      console.warn("Raw response:", str);
       return null;
     }
   } catch (error) {
-    console.error("Error parsing Groq response:", error);
+    console.error("❌ Error parsing Groq response:", error);
+    console.error("Raw response that caused error:", str);
     return null;
   }
 }
@@ -152,12 +169,12 @@ const JobDescriptionContent = styled.div`
   }
 
   &::-webkit-scrollbar-thumb {
-    background: #af1763;
+    background: linear-gradient(135deg, #af1763, #5f4bfa);
     border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: #8a1250;
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
   }
 `;
 
@@ -218,7 +235,7 @@ const FilterSelect = styled.select`
 
   &:focus {
     outline: none;
-    border-color: #af1763;
+    border-color: #5f4bfa;
   }
 
   option {
@@ -228,7 +245,7 @@ const FilterSelect = styled.select`
 `;
 
 const UploadButton = styled.button`
-  background: #af1763;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: #ffffff;
   padding: 10px 20px;
   border-radius: 8px;
@@ -242,7 +259,7 @@ const UploadButton = styled.button`
   gap: 8px;
 
   &:hover {
-    background: #8a1250;
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
   }
 
   &:disabled {
@@ -312,7 +329,7 @@ const Td = styled.td`
 `;
 
 const ResumeLink = styled.a`
-  color: #af1763;
+  color: #5f4bfa;
   text-decoration: none;
   font-weight: 500;
 
@@ -479,7 +496,7 @@ const FileCount = styled.div`
   position: absolute;
   top: -10px;
   right: -10px;
-  background: #af1763;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: white;
   border-radius: 50%;
   width: 30px;
@@ -543,7 +560,7 @@ const ErrorState = styled.div`
 `;
 
 const SetupButton = styled.button`
-  background: #af1763;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: #ffffff;
   padding: 12px 24px;
   border-radius: 8px;
@@ -555,7 +572,7 @@ const SetupButton = styled.button`
   margin-top: 16px;
 
   &:hover {
-    background: #8a1250;
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
   }
 `;
 

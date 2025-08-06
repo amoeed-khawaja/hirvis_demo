@@ -45,7 +45,11 @@ const PlansContainer = styled.div`
 
 const PlanCard = styled.div`
   background: linear-gradient(135deg, #232837 0%, #1a1d2a 100%);
-  border: 2px solid ${(props) => (props.featured ? "#af1763" : "#374151")};
+  border: 2px solid ${(props) => (props.featured ? "transparent" : "#374151")};
+  background: ${(props) =>
+    props.featured
+      ? "linear-gradient(135deg, #232837 0%, #1a1d2a 100%) padding-box, linear-gradient(135deg, #af1763, #5f4bfa) border-box"
+      : "linear-gradient(135deg, #232837 0%, #1a1d2a 100%)"};
   border-radius: 16px;
   padding: 60px;
   position: relative;
@@ -56,7 +60,7 @@ const PlanCard = styled.div`
   &:hover {
     transform: translateY(-8px);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    border-color: ${(props) => (props.featured ? "#af1763" : "#4b5563")};
+    border-color: ${(props) => (props.featured ? "transparent" : "#4b5563")};
   }
 `;
 
@@ -65,7 +69,7 @@ const FeaturedBadge = styled.div`
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, #af1763, #0d6efd);
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: white;
   padding: 8px 24px;
   border-radius: 20px;
@@ -89,7 +93,7 @@ const PlanPrice = styled.div`
 `;
 
 const PriceAmount = styled.div`
-  color: #af1763;
+  color: #5f4bfa;
   font-size: 3rem;
   font-weight: 700;
   line-height: 1;
@@ -130,33 +134,27 @@ const FeatureItem = styled.li`
 
 const SubscribeButton = styled.button`
   width: 100%;
+  padding: 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
   background: ${(props) =>
     props.featured
-      ? "linear-gradient(135deg, #af1763, #0d6efd)"
-      : "transparent"};
+      ? "linear-gradient(135deg, #af1763, #5f4bfa)"
+      : "linear-gradient(135deg, #af1763, #5f4bfa)"};
   color: white;
-  border: 2px solid ${(props) => (props.featured ? "#af1763" : "#af1763")};
-  border-radius: 12px;
-  padding: 16px 24px;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
-  transition: all 0.3s ease;
-  margin-top: 32px;
-  opacity: ${(props) => (props.disabled ? 0.6 : 1)};
+  border: 2px solid ${(props) => (props.featured ? "#5f4bfa" : "#5f4bfa")};
 
   &:hover {
-    background: ${(props) =>
-      props.disabled
-        ? props.featured
-          ? "linear-gradient(135deg, #af1763, #0d6efd)"
-          : "transparent"
-        : props.featured
-        ? "linear-gradient(135deg, #8b1451, #0b5ed7)"
-        : "#af1763"};
-    transform: ${(props) => (props.disabled ? "none" : "translateY(-2px)")};
-    box-shadow: ${(props) =>
-      props.disabled ? "none" : "0 8px 25px rgba(175, 23, 99, 0.3)"};
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px
+      ${(props) =>
+        props.featured
+          ? "linear-gradient(135deg, #af1763, #5f4bfa)"
+          : "linear-gradient(135deg, #af1763, #5f4bfa)"};
   }
 `;
 
@@ -250,25 +248,17 @@ const CreditInput = styled.input`
 `;
 
 const AddCreditsButton = styled.button`
-  background: linear-gradient(135deg, #af1763, #0d6efd);
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: white;
   border: none;
-  border-radius: 8px;
   padding: 12px 24px;
-  font-size: 1rem;
-  font-weight: 600;
+  border-radius: 8px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(175, 23, 99, 0.3);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
   }
 `;
 

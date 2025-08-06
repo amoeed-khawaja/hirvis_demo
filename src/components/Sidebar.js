@@ -18,9 +18,11 @@ const SidebarContainer = styled.div`
 `;
 
 const Logo = styled.div`
-  padding: 0 32px 32px 32px;
-  border-bottom: 1px solid #374151;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #5f4bfa;
   margin-bottom: 32px;
+  text-align: center;
 `;
 
 const LogoText = styled.h1`
@@ -47,7 +49,7 @@ const UserAvatar = styled.div`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #af1763, #0d6efd);
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -100,25 +102,25 @@ const NavLink = styled(Link)`
   align-items: center;
   gap: 12px;
   padding: 12px 32px;
-  color: ${(props) => (props.active ? "#AF1763" : "#BFD4D1")};
+  color: ${(props) => (props.active ? "#5f4bfa" : "#BFD4D1")};
   text-decoration: none;
   font-weight: ${(props) => (props.active ? "600" : "500")};
   background-color: ${(props) =>
-    props.active ? "rgba(175, 23, 99, 0.1)" : "transparent"};
-  border-right: ${(props) => (props.active ? "3px solid #AF1763" : "none")};
+    props.active ? "rgba(95, 75, 250, 0.1)" : "transparent"};
+  border-right: ${(props) => (props.active ? "3px solid" : "none")};
+  border-image: ${(props) =>
+    props.active ? "linear-gradient(135deg, #af1763, #5f4bfa) 1" : "none"};
   transition: all 0.2s ease;
 
   &:hover {
     background-color: ${(props) =>
-      props.active ? "rgba(175, 23, 99, 0.15)" : "rgba(175, 23, 99, 0.05)"};
-    color: ${(props) => (props.active ? "#AF1763" : "#FFFFFF")};
+      props.active ? "rgba(95, 75, 250, 0.15)" : "rgba(95, 75, 250, 0.05)"};
+    color: ${(props) => (props.active ? "#5f4bfa" : "#FFFFFF")};
   }
 `;
 
 const NavIcon = styled.span`
   font-size: 1.2rem;
-  width: 20px;
-  text-align: center;
 `;
 
 const LogoutButton = styled.button`
@@ -126,8 +128,9 @@ const LogoutButton = styled.button`
   margin: 32px 32px 0 32px;
   padding: 12px 0;
   background: #232837;
-  color: #af1763;
-  border: 1.5px solid #af1763;
+  color: #5f4bfa;
+  border: 1.5px solid;
+  border-image: linear-gradient(135deg, #af1763, #5f4bfa) 1;
   border-radius: 8px;
   font-size: 1.08rem;
   font-weight: 600;
@@ -135,10 +138,11 @@ const LogoutButton = styled.button`
   transition: background 0.18s, color 0.18s, border 0.18s;
   display: block;
   text-align: center;
+
   &:hover {
-    background: #af1763;
+    background: linear-gradient(135deg, #af1763, #5f4bfa);
     color: #fff;
-    border-color: #af1763;
+    border-image: linear-gradient(135deg, #af1763, #5f4bfa) 1;
   }
 `;
 

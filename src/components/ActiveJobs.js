@@ -34,7 +34,7 @@ const Title = styled.h1`
 `;
 
 const AddButton = styled.button`
-  background: #af1763;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: #ffffff;
   padding: 12px 24px;
   border-radius: 8px;
@@ -47,7 +47,7 @@ const AddButton = styled.button`
   cursor: pointer;
   transition: background 0.2s;
   &:hover {
-    background: #8a1250;
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
   }
 `;
 
@@ -219,7 +219,7 @@ const Button = styled.button`
 `;
 
 const PrimaryButton = styled(Button)`
-  background: #af1763;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
   color: #ffffff;
   &:hover {
     background: #8a1250;
