@@ -43,19 +43,10 @@ async function extractTextFromPDF(file) {
 // Function to parse Groq API response
 function parseGroqCandidateString(str) {
   try {
-    console.log("🔍 Parsing Groq response:", str);
-
-    if (!str || str.trim() === "") {
-      console.error("❌ Empty or null response string");
-      return null;
-    }
-
     const parts = str.split("|").map((s) => s.trim());
-    console.log("📊 Parsed parts:", parts);
-
     if (parts.length >= 8) {
-      const candidateData = {
-        name: parts[0] || "Unknown",
+      return {
+        name: parts[0] || "N/A",
         email: parts[1] || "N/A",
         phone: parts[2] || "N/A",
         score: parseInt(parts[3]) || 0,
@@ -64,20 +55,12 @@ function parseGroqCandidateString(str) {
         degree: parts[6] || "N/A",
         notes: parts[7] || "N/A",
       };
-
-      console.log("✅ Successfully parsed candidate data:", candidateData);
-      return candidateData;
     } else {
-      console.warn(
-        "❌ Invalid Groq response format - expected 8 parts, got",
-        parts.length
-      );
-      console.warn("Raw response:", str);
+      console.warn("Invalid Groq response format:", str);
       return null;
     }
   } catch (error) {
-    console.error("❌ Error parsing Groq response:", error);
-    console.error("Raw response that caused error:", str);
+    console.error("Error parsing Groq response:", error);
     return null;
   }
 }
