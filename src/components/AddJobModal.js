@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { supabase } from "../supabase";
 import { getGroqResponse } from "../api";
@@ -534,6 +534,8 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
   const [error, setError] = useState("");
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [isGeneratingJD, setIsGeneratingJD] = useState(false);
+  const [playingAssistant, setPlayingAssistant] = useState(null);
+  const [currentAudio, setCurrentAudio] = useState(null);
 
   const assistants = [
     {
@@ -572,23 +574,83 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
 
   const selectedAssistant = assistants.find((a) => a.id === formData.assistant);
 
+  const stopCurrentAudio = () => {
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+    }
+    // Also stop any text-to-speech
+    window.speechSynthesis.cancel();
+    setPlayingAssistant(null);
+    setCurrentAudio(null);
+  };
+
+  // Cleanup audio when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      stopCurrentAudio();
+    }
+  }, [isOpen, currentAudio]);
+
   const previewAssistant = (assistant) => {
     try {
-      const utterance = new SpeechSynthesisUtterance(assistant.sample);
-      // Best-effort voice selection by gender (may vary by system/browser)
-      const voices = window.speechSynthesis.getVoices();
-      if (voices && voices.length) {
-        const preferred = voices.find((v) =>
-          assistant.gender === "Female"
-            ? /female|woman/i.test(v.name)
-            : /male|man/i.test(v.name)
-        );
-        if (preferred) utterance.voice = preferred;
+      // If this assistant is currently playing, stop it
+      if (playingAssistant === assistant.id) {
+        stopCurrentAudio();
+        return;
       }
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utterance);
+
+      // Stop any currently playing audio
+      stopCurrentAudio();
+
+      // Create and play the audio file for this assistant
+      const audio = new Audio(`/assistant_audios/${assistant.name}.m4a`);
+      audio.setAttribute("data-assistant-audio", "true");
+
+      // Set up event listeners
+      audio.addEventListener("ended", () => {
+        setPlayingAssistant(null);
+        setCurrentAudio(null);
+      });
+
+      audio.addEventListener("error", () => {
+        console.warn(`Could not play audio for ${assistant.name}`);
+        // Fallback to text-to-speech if audio file fails
+        const utterance = new SpeechSynthesisUtterance(assistant.sample);
+        const voices = window.speechSynthesis.getVoices();
+        if (voices && voices.length) {
+          const preferred = voices.find((v) =>
+            assistant.gender === "Female"
+              ? /female|woman/i.test(v.name)
+              : /male|man/i.test(v.name)
+          );
+          if (preferred) utterance.voice = preferred;
+        }
+
+        utterance.addEventListener("end", () => {
+          setPlayingAssistant(null);
+          setCurrentAudio(null);
+        });
+
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+        setPlayingAssistant(assistant.id);
+        setCurrentAudio(null); // No audio object for TTS
+      });
+
+      // Start playing
+      setPlayingAssistant(assistant.id);
+      setCurrentAudio(audio);
+
+      audio.play().catch((error) => {
+        console.warn(`Could not play audio for ${assistant.name}:`, error);
+        setPlayingAssistant(null);
+        setCurrentAudio(null);
+      });
     } catch (e) {
-      console.warn("Speech synthesis not supported:", e);
+      console.warn("Audio playback not supported:", e);
+      setPlayingAssistant(null);
+      setCurrentAudio(null);
     }
   };
 
@@ -1018,7 +1080,7 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
                               previewAssistant(a);
                             }}
                           >
-                            ▶︎ Play
+                            {playingAssistant === a.id ? "⏹ Stop" : "▶︎ Play"}
                           </PlayButton>
                         </AssistantItem>
                       ))}
