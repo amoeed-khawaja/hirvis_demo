@@ -680,22 +680,40 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
   };
 
   const generateProfessionalJD = async () => {
-    if (!formData.jobTitle.trim() || !formData.jobDescription.trim()) {
-      setError("Please enter Job Title and a brief description first.");
+    if (!formData.jobTitle.trim()) {
+      setError("Please enter Job Title first.");
       return;
     }
     try {
       setIsGeneratingJD(true);
       setError("");
+
+      // Determine if we're rewriting existing description or creating from scratch
+      const hasExistingDescription =
+        formData.jobDescription && formData.jobDescription.trim();
+
       const messages = [
         {
           role: "system",
-          content:
-            "You rewrite job descriptions. Return ONLY two sections titled exactly: 'Overview:' and 'Requirements:'. No markdown asterisks, no placeholders like [Insert...], no meta text. Keep it concise and professional.",
+          content: hasExistingDescription
+            ? "You rewrite job descriptions. Return ONLY two sections titled exactly: 'Overview:' and 'Requirements:'. No markdown asterisks, no placeholders like [Insert...], no meta text. Keep it concise and professional."
+            : "You are a professional job description writer. Create a comprehensive job description with ONLY two sections titled exactly: 'Overview:' and 'Requirements:'. No markdown asterisks, no placeholders like [Insert...], no meta text. Keep it concise and professional.",
         },
         {
           role: "user",
-          content: `Job Title: ${formData.jobTitle}\n\nExisting Description:\n${formData.jobDescription}\n\nRewrite into two sections: Overview and Requirements (list with dashes).`,
+          content: hasExistingDescription
+            ? `Job Title: ${formData.jobTitle}\nLocation: ${
+                formData.jobLocation || "Not specified"
+              }\nWorkplace Type: ${
+                formData.workplaceType || "Not specified"
+              }\n\nExisting Description:\n${
+                formData.jobDescription
+              }\n\nRewrite into two sections: Overview and Requirements (list with dashes).`
+            : `Job Title: ${formData.jobTitle}\nLocation: ${
+                formData.jobLocation || "Not specified"
+              }\nWorkplace Type: ${
+                formData.workplaceType || "Full-time"
+              }\n\nCreate a professional job description with two sections: Overview and Requirements (list with dashes). Base it on the job title and include typical responsibilities and requirements for this role.`,
         },
       ];
       const data = await getGroqResponse(messages);
@@ -703,7 +721,22 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
       if (!content) throw new Error("Empty response from model");
       setFormData((prev) => ({ ...prev, jobDescription: content }));
     } catch (e) {
-      setError(e.message || "Failed to generate job description");
+      console.error("Job description generation error:", e);
+      let errorMessage = "Failed to generate job description";
+
+      if (e.message) {
+        if (e.message.includes("Groq API error")) {
+          errorMessage =
+            "Groq API service is currently unavailable. Please check your API key and try again.";
+        } else if (e.message.includes("500")) {
+          errorMessage =
+            "Server error. Please ensure the Groq API key is properly configured and the server is running.";
+        } else {
+          errorMessage = e.message;
+        }
+      }
+
+      setError(errorMessage);
     } finally {
       setIsGeneratingJD(false);
     }
@@ -911,9 +944,18 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
                     type="button"
                     onClick={generateProfessionalJD}
                     disabled={isGeneratingJD}
-                    title="Rewrite professionally with AI"
+                    title={
+                      formData.jobDescription.trim()
+                        ? "Rewrite professionally with AI"
+                        : "Generate job description from title with AI"
+                    }
                   >
-                    ❇️ {isGeneratingJD ? "Generating..." : "Generate"}
+                    ❇️{" "}
+                    {isGeneratingJD
+                      ? "Generating..."
+                      : formData.jobDescription.trim()
+                      ? "Rewrite"
+                      : "Generate"}
                   </GenerateJDButton>
                 </TextAreaContainer>
               </FormGroup>

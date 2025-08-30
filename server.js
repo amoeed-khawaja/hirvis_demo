@@ -118,16 +118,34 @@ app.post("/api/create-checkout-session", async (req, res) => {
 
 app.post("/api/groq", async (req, res) => {
   try {
+    console.log("🔍 Groq API Request received");
+    console.log("📋 Environment check:");
+    console.log("  - GROQ_API_KEY exists:", !!process.env.GROQ_API_KEY);
+    console.log(
+      "  - Key preview:",
+      process.env.GROQ_API_KEY
+        ? process.env.GROQ_API_KEY.substring(0, 10) + "..."
+        : "undefined"
+    );
+
     const { messages } = req.body;
+    console.log("📨 Messages:", JSON.stringify(messages, null, 2));
+
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error("GROQ_API_KEY environment variable is not set");
+    }
+
     const chatCompletion = await groq.chat.completions.create({
       messages,
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
       temperature: 1,
       max_completion_tokens: 1024,
       top_p: 1,
       stream: false,
       stop: null,
     });
+
+    console.log("✅ Groq API Response received successfully");
     res.json(chatCompletion);
   } catch (err) {
     // Server-side detailed logging
@@ -138,7 +156,7 @@ app.post("/api/groq", async (req, res) => {
       status: err?.status || err?.statusCode,
       responseData: err?.response || err?.data || err?.body,
       envHasKey: !!process.env.GROQ_API_KEY,
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
     });
 
     // Return detailed but safe payload to client
@@ -147,7 +165,7 @@ app.post("/api/groq", async (req, res) => {
       message: err?.message || "Unknown error",
       name: err?.name || null,
       status: err?.status || err?.statusCode || 500,
-      model: "llama-3.3-70b-versatile",
+      model: "llama-3.1-8b-instant",
       hints: [
         "Verify GROQ_API_KEY is set and the server was restarted",
         "Try a model your account has access to (e.g. llama-3.1-70b-versatile)",
