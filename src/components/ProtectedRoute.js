@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "../supabase";
 import LoadingSpinner from "./LoadingSpinner";
@@ -8,9 +8,20 @@ const ProtectedRoute = ({ children }) => {
   const [authenticated, setAuthenticated] = useState(false);
   const [userExists, setUserExists] = useState(false);
   const location = useLocation();
+  const checkingRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
+      if (checkingRef.current) return; // prevent concurrent loops
+      checkingRef.current = true;
       try {
         console.log("ProtectedRoute: Checking authentication...");
         const {
@@ -20,26 +31,35 @@ const ProtectedRoute = ({ children }) => {
 
         if (error) {
           console.error("ProtectedRoute: Auth error:", error);
-          setAuthenticated(false);
-          setLoading(false);
+          if (isMountedRef.current) {
+            setAuthenticated(false);
+            setLoading(false);
+          }
+          checkingRef.current = false;
           return;
         }
 
         if (!session) {
           console.log("ProtectedRoute: No session found");
-          setAuthenticated(false);
-          setLoading(false);
+          if (isMountedRef.current) {
+            setAuthenticated(false);
+            setLoading(false);
+          }
+          checkingRef.current = false;
           return;
         }
 
         console.log("ProtectedRoute: User authenticated:", session.user.id);
-        setAuthenticated(true);
+        if (isMountedRef.current) setAuthenticated(true);
 
         // If user is on onboarding page, allow access
         if (location.pathname === "/onboarding") {
           console.log("ProtectedRoute: User on onboarding page, allow access");
-          setUserExists(true);
-          setLoading(false);
+          if (isMountedRef.current) {
+            setUserExists(true);
+            setLoading(false);
+          }
+          checkingRef.current = false;
           return;
         }
 
@@ -55,28 +75,22 @@ const ProtectedRoute = ({ children }) => {
           console.log(
             "ProtectedRoute: User not found in users_data, redirecting to onboarding"
           );
-          setUserExists(false);
+          if (isMountedRef.current) setUserExists(false);
         } else {
           console.log("ProtectedRoute: User found in users_data");
-          setUserExists(true);
+          if (isMountedRef.current) setUserExists(true);
         }
 
-        setLoading(false);
+        if (isMountedRef.current) setLoading(false);
       } catch (error) {
         console.error("ProtectedRoute: Error:", error);
-        setLoading(false);
+        if (isMountedRef.current) setLoading(false);
+      } finally {
+        checkingRef.current = false;
       }
     };
 
-    // Add timeout to prevent infinite loading
-    const timeout = setTimeout(() => {
-      console.log("ProtectedRoute: Timeout reached, setting loading to false");
-      setLoading(false);
-    }, 10000);
-
     checkAuth();
-
-    return () => clearTimeout(timeout);
   }, [location.pathname]);
 
   if (loading) {

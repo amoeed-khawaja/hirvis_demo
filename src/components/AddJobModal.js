@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { supabase } from "../supabase";
+import { getGroqResponse } from "../api";
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -186,6 +187,11 @@ const TextArea = styled.textarea`
   resize: vertical;
   min-height: 120px;
   transition: border-color 0.2s;
+  padding-right: 96px;
+  padding-bottom: 42px;
+  width: 100%;
+  display: block;
+  box-sizing: border-box;
 
   &:focus {
     outline: none;
@@ -380,6 +386,137 @@ const SecondaryButton = styled(Button)`
   }
 `;
 
+// Assistant selector styles
+const AssistantSelect = styled.div`
+  position: relative;
+`;
+
+const AssistantTrigger = styled.button`
+  width: 100%;
+  background: #374151;
+  border: 1px solid #4b5563;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #ffffff;
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+`;
+
+const AssistantMenu = styled.div`
+  position: absolute;
+  top: 110%;
+  left: 0;
+  right: 0;
+  background: #232837;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  padding: 8px;
+  z-index: 10;
+`;
+
+const AssistantItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #2b3143;
+  }
+`;
+
+const AssistantInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`;
+
+const AssistantAvatar = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 700;
+`;
+
+const AssistantName = styled.div`
+  color: #ffffff;
+  font-weight: 600;
+`;
+
+const Tags = styled.div`
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+`;
+
+const Tag = styled.span`
+  background: #374151;
+  border: 1px solid #4b5563;
+  color: #9ca3af;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+`;
+
+const GenderTag = styled(Tag)`
+  margin-left: 8px;
+`;
+
+const PlayButton = styled.button`
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+`;
+
+const TextAreaContainer = styled.div`
+  position: relative;
+  width: 100%;
+  display: block;
+`;
+
+const GenerateJDButton = styled.button`
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+
+  &:disabled {
+    background: #374151;
+    color: #9ca3af;
+    cursor: not-allowed;
+  }
+`;
+
 const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
   const [activeTab, setActiveTab] = useState("basic");
   const [formData, setFormData] = useState({
@@ -390,10 +527,70 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
     jobDuration: 30,
     postToLinkedIn: false,
     requiredSkills: [],
+    assistant: "",
   });
   const [newSkill, setNewSkill] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [isGeneratingJD, setIsGeneratingJD] = useState(false);
+
+  const assistants = [
+    {
+      id: "Cole",
+      name: "Cole",
+      traits: ["Calm", "Professional"],
+      gender: "Male",
+      sample:
+        "Hello, I'm Cole. I'll guide your candidates with a calm, professional tone.",
+    },
+    {
+      id: "Emily",
+      name: "Emily",
+      traits: ["Energetic", "Cheeky"],
+      gender: "Female",
+      sample:
+        "Hi! I'm Emily. Expect a lively, cheeky twist to keep things engaging!",
+    },
+    {
+      id: "Harry",
+      name: "Harry",
+      traits: ["Energetic", "Professional"],
+      gender: "Male",
+      sample:
+        "Hey there, I'm Harry. Energetic yet professional—let's make this smooth.",
+    },
+    {
+      id: "Paige",
+      name: "Paige",
+      traits: ["Calm", "Professional"],
+      gender: "Female",
+      sample:
+        "Hello, I'm Paige. Calm, composed, and professional throughout the interview.",
+    },
+  ];
+
+  const selectedAssistant = assistants.find((a) => a.id === formData.assistant);
+
+  const previewAssistant = (assistant) => {
+    try {
+      const utterance = new SpeechSynthesisUtterance(assistant.sample);
+      // Best-effort voice selection by gender (may vary by system/browser)
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length) {
+        const preferred = voices.find((v) =>
+          assistant.gender === "Female"
+            ? /female|woman/i.test(v.name)
+            : /male|man/i.test(v.name)
+        );
+        if (preferred) utterance.voice = preferred;
+      }
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn("Speech synthesis not supported:", e);
+    }
+  };
 
   const commonSkills = [
     "React",
@@ -404,7 +601,6 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
     "SQL",
   ];
 
-  // Initialize form data when modal opens or initialData changes
   React.useEffect(() => {
     if (isOpen && initialData) {
       setFormData({
@@ -416,9 +612,9 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
         jobDuration: initialData.jobDuration || 30,
         postToLinkedIn: initialData.postToLinkedIn || false,
         requiredSkills: initialData.requiredSkills || [],
+        assistant: initialData.assistant || "",
       });
     } else if (isOpen && !initialData) {
-      // Reset form when adding new job
       setFormData({
         jobTitle: "",
         workplaceType: "Full-time",
@@ -427,11 +623,11 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
         jobDuration: 30,
         postToLinkedIn: false,
         requiredSkills: [],
+        assistant: "",
       });
     }
   }, [isOpen, initialData]);
 
-  // Validation function
   const isBasicInfoValid = () => {
     return (
       formData.jobTitle.trim() !== "" &&
@@ -483,6 +679,36 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
     }
   };
 
+  const generateProfessionalJD = async () => {
+    if (!formData.jobTitle.trim() || !formData.jobDescription.trim()) {
+      setError("Please enter Job Title and a brief description first.");
+      return;
+    }
+    try {
+      setIsGeneratingJD(true);
+      setError("");
+      const messages = [
+        {
+          role: "system",
+          content:
+            "You rewrite job descriptions. Return ONLY two sections titled exactly: 'Overview:' and 'Requirements:'. No markdown asterisks, no placeholders like [Insert...], no meta text. Keep it concise and professional.",
+        },
+        {
+          role: "user",
+          content: `Job Title: ${formData.jobTitle}\n\nExisting Description:\n${formData.jobDescription}\n\nRewrite into two sections: Overview and Requirements (list with dashes).`,
+        },
+      ];
+      const data = await getGroqResponse(messages);
+      const content = data.choices?.[0]?.message?.content?.trim?.() || "";
+      if (!content) throw new Error("Empty response from model");
+      setFormData((prev) => ({ ...prev, jobDescription: content }));
+    } catch (e) {
+      setError(e.message || "Failed to generate job description");
+    } finally {
+      setIsGeneratingJD(false);
+    }
+  };
+
   async function checkLinkedInPermissions() {
     console.log("Checking LinkedIn permissions...");
     setStatus("");
@@ -528,7 +754,6 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
     console.log("Attempting to post to LinkedIn", job);
     setStatus("");
     setError("");
-    // 1. Get session and access token
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -538,7 +763,6 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
       throw new Error(
         "No LinkedIn access token found. Please log in with LinkedIn."
       );
-    // 2. Call backend proxy
     try {
       console.log("Will send POST to backend", { accessToken, job });
       const res = await fetch("http://localhost:5000/api/linkedin-post", {
@@ -585,6 +809,7 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
         jobDuration: 30,
         postToLinkedIn: false,
         requiredSkills: [],
+        assistant: "",
       });
     }
   };
@@ -673,14 +898,24 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
 
               <FormGroup>
                 <Label>Job Description *</Label>
-                <TextArea
-                  placeholder="Describe the role, responsibilities, requirements, and any screening questions"
-                  value={formData.jobDescription}
-                  onChange={(e) =>
-                    handleInputChange("jobDescription", e.target.value)
-                  }
-                  required
-                />
+                <TextAreaContainer>
+                  <TextArea
+                    placeholder="Describe the role, responsibilities, requirements, and any screening questions"
+                    value={formData.jobDescription}
+                    onChange={(e) =>
+                      handleInputChange("jobDescription", e.target.value)
+                    }
+                    required
+                  />
+                  <GenerateJDButton
+                    type="button"
+                    onClick={generateProfessionalJD}
+                    disabled={isGeneratingJD}
+                    title="Rewrite professionally with AI"
+                  >
+                    ❇️ {isGeneratingJD ? "Generating..." : "Generate"}
+                  </GenerateJDButton>
+                </TextAreaContainer>
               </FormGroup>
 
               <FormGroup>
@@ -697,6 +932,60 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
                   }
                   required
                 />
+              </FormGroup>
+
+              <FormGroup>
+                <Label>Interviewer Agent</Label>
+                <AssistantSelect>
+                  <AssistantTrigger onClick={() => setAssistantOpen((o) => !o)}>
+                    <span>
+                      {selectedAssistant
+                        ? `${
+                            selectedAssistant.name
+                          } — ${selectedAssistant.traits.join(" + ")}`
+                        : "Select an agent"}
+                    </span>
+                    <span>▾</span>
+                  </AssistantTrigger>
+                  {assistantOpen && (
+                    <AssistantMenu>
+                      {assistants.map((a) => (
+                        <AssistantItem
+                          key={a.id}
+                          onClick={() => {
+                            handleInputChange("assistant", a.id);
+                            setAssistantOpen(false);
+                          }}
+                        >
+                          <AssistantInfo>
+                            <AssistantAvatar>{a.name[0]}</AssistantAvatar>
+                            <div>
+                              <AssistantName>{a.name}</AssistantName>
+                              <Tags>
+                                {a.traits.map((t) => (
+                                  <Tag key={t}>{t}</Tag>
+                                ))}
+                                <GenderTag>{a.gender}</GenderTag>
+                              </Tags>
+                            </div>
+                          </AssistantInfo>
+                          <PlayButton
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              previewAssistant(a);
+                            }}
+                          >
+                            ▶︎ Play
+                          </PlayButton>
+                        </AssistantItem>
+                      ))}
+                    </AssistantMenu>
+                  )}
+                </AssistantSelect>
+                <p style={{ color: "#9ca3af", fontSize: "0.85rem", margin: 0 }}>
+                  Preview the assistant's voice before selecting.
+                </p>
               </FormGroup>
 
               <CheckboxContainer>

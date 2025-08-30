@@ -576,6 +576,8 @@ const Applicants = () => {
   const [selectedCandidateName, setSelectedCandidateName] = useState("");
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragCounter, setDragCounter] = useState(0);
+  const [selectedCandidates, setSelectedCandidates] = useState(new Set());
+  const [hasQuestions, setHasQuestions] = useState(false);
   const fileInputRef = React.useRef();
 
   // Fetch job details
@@ -604,6 +606,29 @@ const Applicants = () => {
     } catch (err) {
       console.error("Error in fetchJob:", err);
       setError("Failed to fetch job details");
+    }
+  };
+
+  // Check if questions exist for this job
+  const checkQuestionsExist = async () => {
+    try {
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) return;
+
+      const { count, error } = await supabase
+        .from("interview_questions")
+        .select("*", { count: "exact", head: true })
+        .eq("job_id", jobId)
+        .eq("login_user_id", currentUserId);
+
+      if (error) {
+        console.error("Error checking questions:", error);
+        return;
+      }
+
+      setHasQuestions((count || 0) > 0);
+    } catch (err) {
+      console.error("Error in checkQuestionsExist:", err);
     }
   };
 
@@ -717,7 +742,11 @@ const Applicants = () => {
         return;
       }
 
-      await Promise.all([fetchJob(), fetchCandidates("", "")]);
+      await Promise.all([
+        fetchJob(),
+        fetchCandidates("", ""),
+        checkQuestionsExist(),
+      ]);
       setLoading(false);
     };
     loadData();
@@ -896,6 +925,107 @@ const Applicants = () => {
     setIsNotesModalOpen(true);
   };
 
+  // Handle individual candidate selection
+  const handleCandidateSelect = (candidateId) => {
+    setSelectedCandidates((prev) => {
+      const newSelected = new Set(prev);
+      if (newSelected.has(candidateId)) {
+        newSelected.delete(candidateId);
+      } else {
+        newSelected.add(candidateId);
+      }
+      return newSelected;
+    });
+  };
+
+  // Handle select all candidates
+  const handleSelectAll = () => {
+    if (selectedCandidates.size === filteredCandidates.length) {
+      // If all are selected, deselect all
+      setSelectedCandidates(new Set());
+    } else {
+      // Select all filtered candidates
+      const allCandidateIds = new Set(
+        filteredCandidates.map((candidate) => candidate.id)
+      );
+      setSelectedCandidates(allCandidateIds);
+    }
+  };
+
+  // Check if all candidates are selected
+  const isAllSelected =
+    filteredCandidates.length > 0 &&
+    selectedCandidates.size === filteredCandidates.length;
+
+  // Check if some candidates are selected
+  const isIndeterminate =
+    selectedCandidates.size > 0 &&
+    selectedCandidates.size < filteredCandidates.length;
+
+  // Handle interview round selection
+  const handleInterviewRound = async () => {
+    if (selectedCandidates.size === 0) return;
+
+    try {
+      setUploadStatus({
+        type: "info",
+        message: "Moving candidates to interview round...",
+      });
+
+      // Get current user ID
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setUploadStatus({
+          type: "error",
+          message: "User not authenticated",
+        });
+        return;
+      }
+
+      // Update candidate_data table to set Interview_round = TRUE for selected candidates
+      const { error } = await supabase
+        .from("candidate_data")
+        .update({ Interview_round: true })
+        .in("id", Array.from(selectedCandidates))
+        .eq("login_user_id", currentUserId);
+
+      if (error) {
+        console.error("Error updating candidates for interview round:", error);
+        setUploadStatus({
+          type: "error",
+          message: `Failed to move candidates to interview round: ${error.message}`,
+        });
+        return;
+      }
+
+      setUploadStatus({
+        type: "success",
+        message: `Successfully moved ${selectedCandidates.size} candidate(s) to interview round.`,
+      });
+
+      // Clear selection
+      setSelectedCandidates(new Set());
+
+      // Refresh candidates list
+      await fetchCandidates(experienceFilter, scoreFilter);
+
+      // Navigate based on whether questions exist
+      if (hasQuestions) {
+        // Questions already exist, go directly to interviews page
+        navigate(`/jobs/${jobId}/interviews?from=applicants`);
+      } else {
+        // No questions exist, go to questions page first
+        navigate(`/jobs/${jobId}/interview-questions?from=applicants`);
+      }
+    } catch (error) {
+      console.error("Error in handleInterviewRound:", error);
+      setUploadStatus({
+        type: "error",
+        message: `Error moving candidates to interview round: ${error.message}`,
+      });
+    }
+  };
+
   // Drag and drop handlers
   const handleDragEnter = (e) => {
     e.preventDefault();
@@ -1042,6 +1172,25 @@ const Applicants = () => {
                   <option value="9">9+</option>
                 </FilterSelect>
               </FilterGroup>
+
+              <FilterGroup>
+                <FilterLabel>Interview</FilterLabel>
+                <UploadButton
+                  onClick={() =>
+                    navigate(`/jobs/${jobId}/interviews?from=applicants`)
+                  }
+                  disabled={!hasQuestions}
+                  style={{
+                    background: hasQuestions
+                      ? "linear-gradient(135deg, #af1763, #5f4bfa)"
+                      : "#374151",
+                    color: hasQuestions ? "#ffffff" : "#9ca3af",
+                    cursor: hasQuestions ? "pointer" : "not-allowed",
+                  }}
+                >
+                  🎯 Interview
+                </UploadButton>
+              </FilterGroup>
             </FiltersContainer>
 
             <UploadButton onClick={triggerFileUpload} disabled={isProcessing}>
@@ -1094,6 +1243,21 @@ const Applicants = () => {
         <Table>
           <thead>
             <tr>
+              <Th style={{ width: "5%" }}>
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={(input) => {
+                    if (input) input.indeterminate = isIndeterminate;
+                  }}
+                  onChange={handleSelectAll}
+                  style={{
+                    width: "16px",
+                    height: "16px",
+                    cursor: "pointer",
+                  }}
+                />
+              </Th>
               <Th style={{ width: "12%" }}>Name</Th>
               <Th style={{ width: "15%" }}>Email</Th>
               <Th style={{ width: "10%" }}>Phone</Th>
@@ -1108,7 +1272,7 @@ const Applicants = () => {
           <tbody>
             {filteredCandidates.length === 0 ? (
               <tr>
-                <Td colSpan="9">
+                <Td colSpan="10">
                   <EmptyState>
                     {candidates.length === 0
                       ? "No applicants found for this job"
@@ -1119,6 +1283,18 @@ const Applicants = () => {
             ) : (
               filteredCandidates.map((candidate) => (
                 <tr key={candidate.id}>
+                  <Td>
+                    <input
+                      type="checkbox"
+                      checked={selectedCandidates.has(candidate.id)}
+                      onChange={() => handleCandidateSelect(candidate.id)}
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        cursor: "pointer",
+                      }}
+                    />
+                  </Td>
                   <Td>{candidate["Full Name"]}</Td>
                   <Td>{candidate["Email"]}</Td>
                   <Td>{formatPhone(candidate["Phone"])}</Td>
@@ -1166,6 +1342,34 @@ const Applicants = () => {
           </tbody>
         </Table>
       </TableContainer>
+
+      {/* Interview Round Button */}
+      <div
+        style={{
+          marginTop: "24px",
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <UploadButton
+          onClick={handleInterviewRound}
+          disabled={selectedCandidates.size === 0}
+          style={{
+            background:
+              selectedCandidates.size === 0
+                ? "#374151"
+                : "linear-gradient(135deg, #af1763, #5f4bfa)",
+            color: selectedCandidates.size === 0 ? "#9ca3af" : "#ffffff",
+            cursor: selectedCandidates.size === 0 ? "not-allowed" : "pointer",
+            fontSize: "1.1rem",
+            padding: "14px 28px",
+          }}
+        >
+          {selectedCandidates.size === 0
+            ? "Select candidates for Interview Round"
+            : `📋 Send ${selectedCandidates.size} candidate(s) to Interview Round`}
+        </UploadButton>
+      </div>
 
       {/* Notes Modal */}
       {isNotesModalOpen && (

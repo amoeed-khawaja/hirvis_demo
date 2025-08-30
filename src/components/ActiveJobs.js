@@ -279,33 +279,59 @@ const ActiveJobs = () => {
         return;
       }
 
-      // Then, get applicant counts for each job (only for current user's jobs)
-      const jobsWithApplicants = await Promise.all(
+      // Then, get applicant counts and question counts for each job (only for current user's jobs)
+      const jobsWithCounts = await Promise.all(
         (jobsData || []).map(async (job) => {
           try {
-            const { count, error: countError } = await supabase
-              .from("active_job_candidates")
-              .select("*", { count: "exact", head: true })
-              .eq("job_id", job.job_id)
-              .eq("login_user_id", currentUserId);
+            // Get applicant count
+            const { count: applicantCount, error: applicantError } =
+              await supabase
+                .from("active_job_candidates")
+                .select("*", { count: "exact", head: true })
+                .eq("job_id", job.job_id)
+                .eq("login_user_id", currentUserId);
 
-            if (countError) {
+            if (applicantError) {
               console.error(
                 `Error getting applicant count for job ${job.job_id}:`,
-                countError
+                applicantError
               );
-              return { ...job, applicants: 0 };
             }
 
-            return { ...job, applicants: count || 0 };
+            // Get question count
+            const { count: questionCount, error: questionError } =
+              await supabase
+                .from("interview_questions")
+                .select("*", { count: "exact", head: true })
+                .eq("job_id", job.job_id)
+                .eq("login_user_id", currentUserId);
+
+            if (questionError) {
+              console.error(
+                `Error getting question count for job ${job.job_id}:`,
+                questionError
+              );
+            }
+
+            console.log(
+              `Job ${job.job_title} (${job.job_id}): ${
+                questionCount || 0
+              } questions`
+            );
+
+            return {
+              ...job,
+              applicants: applicantCount || 0,
+              questions: questionCount || 0,
+            };
           } catch (err) {
             console.error(`Error processing job ${job.job_id}:`, err);
-            return { ...job, applicants: 0 };
+            return { ...job, applicants: 0, questions: 0 };
           }
         })
       );
 
-      setJobs(jobsWithApplicants);
+      setJobs(jobsWithCounts);
       setError(null);
     } catch (err) {
       console.error("Error in fetchJobs:", err);
@@ -341,6 +367,7 @@ const ActiveJobs = () => {
             job_active_duration: jobData.jobDuration,
             post_linkedin: jobData.postToLinkedIn,
             skills: jobData.requiredSkills?.join(", ") || "",
+            assistant: jobData.assistant || null,
             login_user_id: currentUserId,
           },
         ])
@@ -424,6 +451,7 @@ const ActiveJobs = () => {
           job_active_duration: updatedData.jobDuration,
           post_linkedin: updatedData.postToLinkedIn,
           skills: updatedData.requiredSkills?.join(", ") || "",
+          assistant: updatedData.assistant || null,
         })
         .eq("job_id", selectedJob.job_id)
         .eq("login_user_id", currentUserId)
@@ -447,6 +475,10 @@ const ActiveJobs = () => {
   const handleViewApplicants = () => {
     setIsViewModalOpen(false);
     navigate(`/jobs/${selectedJob.job_id}/applicants`);
+  };
+
+  const handleViewQuestions = (job) => {
+    navigate(`/jobs/${job.job_id}/interview-questions?from=jobs`);
   };
 
   const formatDate = (dateString) => {
@@ -523,6 +555,26 @@ const ActiveJobs = () => {
                         ✏️
                       </ActionButton>
                       <ActionButton
+                        onClick={() => handleViewQuestions(job)}
+                        title={
+                          job.questions > 0
+                            ? "Interview Questions"
+                            : "Add Interview Questions"
+                        }
+                        style={{
+                          background:
+                            job.questions > 0
+                              ? "transparent"
+                              : "linear-gradient(135deg, #af1763, #5f4bfa)",
+                          borderColor:
+                            job.questions > 0 ? "#374151" : "#af1763",
+                          color: job.questions > 0 ? "#ffffff" : "#ffffff",
+                          opacity: job.questions > 0 ? 1 : 1,
+                        }}
+                      >
+                        📋
+                      </ActionButton>
+                      <ActionButton
                         onClick={() => handleDeleteJob(job)}
                         title="Delete"
                       >
@@ -580,6 +632,12 @@ const ActiveJobs = () => {
                 <DetailLabel>Applicants:</DetailLabel>
                 <DetailValue>{selectedJob.applicants || 0}</DetailValue>
               </DetailRow>
+              {selectedJob.assistant && (
+                <DetailRow>
+                  <DetailLabel>Interviewer Agent:</DetailLabel>
+                  <DetailValue>{selectedJob.assistant}</DetailValue>
+                </DetailRow>
+              )}
               <DetailRow>
                 <DetailLabel>Description:</DetailLabel>
                 <DetailValue style={{ maxWidth: "300px", textAlign: "right" }}>
@@ -627,6 +685,7 @@ const ActiveJobs = () => {
             requiredSkills: selectedJob.skills
               ? selectedJob.skills.split(", ")
               : [],
+            assistant: selectedJob.assistant,
           }}
         />
       )}

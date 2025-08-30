@@ -13,6 +13,8 @@ import JobDetails from "./components/JobDetails";
 import Dashboard from "./components/Dashboard";
 import ActiveJobs from "./components/ActiveJobs";
 import Applicants from "./components/Applicants";
+import InterviewQuestions from "./components/InterviewQuestions";
+import Interviews from "./components/Interviews";
 import SignUp from "./components/SignUp";
 import Login from "./components/Login";
 import LandingPage from "./components/LandingPage";
@@ -112,6 +114,14 @@ function App() {
                     <Route
                       path="jobs/:jobId/applicants"
                       element={<Applicants />}
+                    />
+                    <Route
+                      path="jobs/:jobId/interview-questions"
+                      element={<InterviewQuestions />}
+                    />
+                    <Route
+                      path="jobs/:jobId/interviews"
+                      element={<Interviews />}
                     />
                     <Route path="assistant" element={<Assistant />} />
                     <Route path="settings" element={<Settings />} />

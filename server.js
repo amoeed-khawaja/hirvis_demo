@@ -130,7 +130,38 @@ app.post("/api/groq", async (req, res) => {
     });
     res.json(chatCompletion);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    // Server-side detailed logging
+    console.error("Groq error: ", {
+      message: err?.message,
+      name: err?.name,
+      stack: err?.stack,
+      status: err?.status || err?.statusCode,
+      responseData: err?.response || err?.data || err?.body,
+      envHasKey: !!process.env.GROQ_API_KEY,
+      model: "llama-3.3-70b-versatile",
+    });
+
+    // Return detailed but safe payload to client
+    return res.status(500).json({
+      error: "Groq API call failed",
+      message: err?.message || "Unknown error",
+      name: err?.name || null,
+      status: err?.status || err?.statusCode || 500,
+      model: "llama-3.3-70b-versatile",
+      hints: [
+        "Verify GROQ_API_KEY is set and the server was restarted",
+        "Try a model your account has access to (e.g. llama-3.1-70b-versatile)",
+        "Ensure request body shape is { messages: Array<{role, content}> }",
+      ],
+      // Include a truncated stack for easier debugging
+      stack: err?.stack ? String(err.stack).split("\n").slice(0, 5) : null,
+      // Surface any SDK response payload if present (stringify if object)
+      response: err?.response
+        ? typeof err.response === "object"
+          ? JSON.parse(JSON.stringify(err.response))
+          : String(err.response)
+        : null,
+    });
   }
 });
 
