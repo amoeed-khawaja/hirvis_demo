@@ -322,14 +322,16 @@ const SocialRow = styled.div`
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
+  justify-content: center;
 `;
 
 const SocialButton = styled.button`
-  flex: 1;
+  width: 100%;
+  max-width: 280px;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
-  padding: 12px 0;
+  padding: 12px 16px;
   color: #ffffff;
   font-size: 1rem;
   font-weight: 500;
@@ -697,34 +699,6 @@ function Login() {
     }
   };
 
-  const handleLinkedInLogin = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const { error, data } = await supabase.auth.signInWithOAuth({
-        provider: "linkedin_oidc",
-        options: {
-          redirectTo: `${window.location.origin}/app`,
-          scopes: "openid profile email w_member_social",
-        },
-      });
-      if (data && data.session) {
-        const accessToken =
-          data.session.provider_token || data.session.provider_access_token;
-        console.log("LinkedIn access token:", accessToken);
-        if (accessToken && accessToken.split(".").length === 3) {
-          const payload = JSON.parse(atob(accessToken.split(".")[1]));
-          console.log("Decoded LinkedIn token payload:", payload);
-        }
-      }
-      if (error) setError(error.message);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -795,34 +769,39 @@ function Login() {
           <div className="circle-5"></div>
         </GradientCircles>
         <FormCard>
+          <div style={{ textAlign: "center", marginBottom: "24px" }}>
+            <img
+              src="/logo/logo_colored.png"
+              alt="Hirvis"
+              style={{
+                height: "60px",
+                width: "auto",
+                objectFit: "contain",
+              }}
+            />
+          </div>
           <Title>Login</Title>
           <SubTitle>Glad you're back!</SubTitle>
 
           <SocialRow>
             <SocialButton onClick={handleGoogleLogin} disabled={loading}>
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/4/4a/Logo_2013_Google.png"
-                alt="Google"
-                width="20"
-                height="20"
-                style={{ borderRadius: "4px" }}
-              />
-            </SocialButton>
-            <SocialButton onClick={handleLinkedInLogin} disabled={loading}>
-              <img
-                src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linkedin/linkedin-original.svg"
-                alt="LinkedIn"
-                width="20"
-                height="20"
-              />
-            </SocialButton>
-            <SocialButton disabled>
-              <img
-                src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg"
-                alt="GitHub"
-                width="20"
-                height="20"
-              />
+              <span
+                style={{
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: "#4285f4",
+                  backgroundColor: "white",
+                  borderRadius: "50%",
+                  width: "24px",
+                  height: "24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                G
+              </span>
+              Continue with Google
             </SocialButton>
           </SocialRow>
 

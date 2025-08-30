@@ -537,12 +537,12 @@ const AddJobModal = ({ isOpen, onClose, onAddJob, initialData }) => {
 
   const assistants = [
     {
-      id: "Cole",
-      name: "Cole",
+      id: "Elliot",
+      name: "Elliot",
       traits: ["Calm", "Professional"],
       gender: "Male",
       sample:
-        "Hello, I'm Cole. I'll guide your candidates with a calm, professional tone.",
+        "Hello, I'm Elliot. I'll guide your candidates with a calm, professional tone.",
     },
     {
       id: "Emily",

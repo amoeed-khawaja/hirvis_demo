@@ -803,8 +803,15 @@ const LandingPage = () => {
     <Container theme={theme}>
       <Header theme={theme}>
         <Logo theme={theme}>
-          <div className="logo-icon">HR</div>
-          Hirvis
+          <img
+            src="/logo/logo_colored.png"
+            alt="Hirvis"
+            style={{
+              height: "75px",
+              width: "auto",
+              objectFit: "contain",
+            }}
+          />
         </Logo>
         <Nav>
           <NavLink theme={theme}>Features</NavLink>
@@ -828,6 +835,7 @@ const LandingPage = () => {
       <Hero>
         <HeroContent>
           <HeroTitle>
+            <br />
             Filter, Interview, Hire{" "}
             <span className="highlight">All on Autopilot</span>
           </HeroTitle>

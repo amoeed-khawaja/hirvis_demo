@@ -784,6 +784,17 @@ function SignUp() {
           <div className="circle-5"></div>
         </GradientCircles>
         <FormCard>
+          <div style={{ textAlign: "center", marginBottom: "24px" }}>
+            <img
+              src="/logo/logo_colored.png"
+              alt="Hirvis"
+              style={{
+                height: "48px",
+                width: "auto",
+                objectFit: "contain",
+              }}
+            />
+          </div>
           <Title>Sign Up</Title>
           <SubTitle>Create your account</SubTitle>
 

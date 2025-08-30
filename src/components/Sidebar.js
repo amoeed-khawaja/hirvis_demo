@@ -212,7 +212,15 @@ const Sidebar = () => {
   return (
     <SidebarContainer>
       <Logo>
-        <LogoText>INTERNOVA</LogoText>
+        <img
+          src="/logo/logo_colored.png"
+          alt="Hirvis"
+          style={{
+            height: "65px",
+            width: "auto",
+            objectFit: "contain",
+          }}
+        />
       </Logo>
 
       <UserSection>
