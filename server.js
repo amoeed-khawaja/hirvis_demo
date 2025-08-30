@@ -685,5 +685,168 @@ app.post("/api/activate-subscription", async (req, res) => {
   }
 });
 
+// VAPI Assistant Update endpoint
+app.patch("/api/vapi-assistant/:assistantId", async (req, res) => {
+  try {
+    console.log("VAPI assistant update request received:", req.body);
+
+    const { assistantId } = req.params;
+    const { firstMessage, systemMessage } = req.body;
+
+    if (!process.env.VAPI_API_KEY) {
+      console.error("VAPI_API_KEY is not set in environment variables");
+      return res.status(500).json({ error: "VAPI API key not configured" });
+    }
+
+    // VAPI Assistant Update payload
+    const updatePayload = {
+      firstMessage: firstMessage,
+      firstMessageMode: "assistant-speaks-first",
+      model: {
+        provider: "openai",
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: systemMessage,
+          },
+        ],
+        maxTokens: 250,
+        temperature: 0.7,
+      },
+    };
+
+    console.log(
+      "Updating VAPI assistant with payload:",
+      JSON.stringify(updatePayload, null, 2)
+    );
+
+    // Make the VAPI Assistant Update API call
+    const response = await fetch(
+      `https://api.vapi.ai/assistant/${assistantId}`,
+      {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatePayload),
+      }
+    );
+
+    const responseData = await response.json();
+    console.log("VAPI Assistant Update response:", responseData);
+
+    if (!response.ok) {
+      console.error("VAPI Assistant Update error:", responseData);
+      return res.status(response.status).json({
+        error: "VAPI Assistant update failed",
+        details: responseData,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "VAPI assistant updated successfully",
+      data: responseData,
+    });
+  } catch (error) {
+    console.error("VAPI assistant update error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+});
+
+// VAPI endpoint
+app.post("/api/vapi-call", async (req, res) => {
+  try {
+    console.log("VAPI call request received:", req.body);
+
+    const { phoneNumber, assistantId, firstMessage, systemMessage } = req.body;
+
+    if (!process.env.VAPI_API_KEY) {
+      console.error("VAPI_API_KEY is not set in environment variables");
+      return res.status(500).json({ error: "VAPI API key not configured" });
+    }
+
+    if (!process.env.VAPI_PHONE_NUMBER_ID) {
+      console.error("VAPI_PHONE_NUMBER_ID is not set in environment variables");
+      return res.status(500).json({
+        error:
+          "VAPI phone number ID not configured. Please add VAPI_PHONE_NUMBER_ID to your .env file",
+      });
+    }
+
+    // VAPI API call payload - correct structure for outbound calls
+    const vapiPayload = {
+      assistantId: assistantId,
+      phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID, // This is YOUR phone number that will make the call
+      customer: {
+        number: phoneNumber, // This is the number TO BE CALLED
+        numberE164CheckEnabled: true,
+        assistantOverrides: {
+          firstMessage: firstMessage,
+          firstMessageMode: "assistant-speaks-first",
+          maxDurationSeconds: 600,
+          variableValues: {},
+          model: {
+            provider: "openai",
+            model: "gpt-4",
+            messages: [
+              {
+                role: "system",
+                content: systemMessage,
+              },
+            ],
+            maxTokens: 250,
+            temperature: 0.7,
+          },
+        },
+      },
+    };
+
+    console.log(
+      "Calling VAPI API with payload:",
+      JSON.stringify(vapiPayload, null, 2)
+    );
+
+    // Make the actual VAPI API call
+    const response = await fetch("https://api.vapi.ai/call", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(vapiPayload),
+    });
+
+    const responseData = await response.json();
+    console.log("VAPI API response:", responseData);
+
+    if (!response.ok) {
+      console.error("VAPI API error:", responseData);
+      return res.status(response.status).json({
+        error: "VAPI API call failed",
+        details: responseData,
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "VAPI call initiated successfully",
+      callId: responseData.id,
+      data: responseData,
+    });
+  } catch (error) {
+    console.error("VAPI endpoint error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

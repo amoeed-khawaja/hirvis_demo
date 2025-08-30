@@ -191,6 +191,51 @@ const ErrorStatus = styled(StatusMessage)`
   color: #ef4444;
 `;
 
+const VapiTestButton = styled.button`
+  background: linear-gradient(135deg, #af1763, #5f4bfa);
+  color: #ffffff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 24px;
+
+  &:hover {
+    background: linear-gradient(135deg, #8a1250, #4a3fd8);
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    background: #374151;
+    color: #9ca3af;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
+const VapiStatus = styled.div`
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: ${(props) =>
+    props.type === "success"
+      ? "rgba(16, 185, 129, 0.1)"
+      : "rgba(239, 68, 68, 0.1)"};
+  border: 1px solid
+    ${(props) =>
+      props.type === "success"
+        ? "rgba(16, 185, 129, 0.3)"
+        : "rgba(239, 68, 68, 0.3)"};
+  color: ${(props) => (props.type === "success" ? "#10b981" : "#ef4444")};
+`;
+
 const Interviews = () => {
   const { jobId } = useParams();
   const navigate = useNavigate();
@@ -201,6 +246,8 @@ const Interviews = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [statusMessage, setStatusMessage] = useState(null);
+  const [isTestingVapi, setIsTestingVapi] = useState(false);
+  const [vapiStatus, setVapiStatus] = useState(null);
 
   // Fetch job details
   const fetchJob = async () => {
@@ -359,6 +406,287 @@ const Interviews = () => {
     return phone;
   };
 
+  // Test VAPI integration
+  const testVapiCall = async () => {
+    try {
+      setIsTestingVapi(true);
+      setVapiStatus(null);
+
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setVapiStatus({ type: "error", message: "User not authenticated" });
+        return;
+      }
+
+      // Get user data for company name and assistant name
+      const { data: userData, error: userError } = await supabase
+        .from("users_data")
+        .select("organization, assistant_name")
+        .eq("login_user_id", currentUserId)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user data:", userError);
+        setVapiStatus({
+          type: "error",
+          message: "Failed to fetch company information",
+        });
+        return;
+      }
+
+      const companyName = userData?.organization || "Your Company";
+      const assistantName = userData?.assistant_name || "Elliot";
+
+      // Get job details for job title
+      const { data: jobData, error: jobError } = await supabase
+        .from("active_jobs")
+        .select("job_title")
+        .eq("job_id", jobId)
+        .eq("login_user_id", currentUserId)
+        .single();
+
+      if (jobError) {
+        console.error("Error fetching job data:", jobError);
+        setVapiStatus({
+          type: "error",
+          message: "Failed to fetch job information",
+        });
+        return;
+      }
+
+      const jobTitle = jobData?.job_title || "the position";
+
+      // Get interview questions for this job
+      const { data: questions, error: questionsError } = await supabase
+        .from("interview_questions")
+        .select("question_text, question_order")
+        .eq("job_id", jobId)
+        .eq("login_user_id", currentUserId)
+        .order("question_order");
+
+      if (questionsError) {
+        console.error("Error fetching questions:", questionsError);
+        setVapiStatus({
+          type: "error",
+          message: "Failed to fetch interview questions",
+        });
+        return;
+      }
+
+      // Format questions for the prompt with proper ordering
+      const questionsList =
+        questions && questions.length > 0
+          ? questions.map((q) => `"${q.question_text}"`).join("\n\n")
+          : '"Tell me about your experience with this type of role."\n\n"What are your strengths and how do they apply to this position?"\n\n"Where do you see yourself in 3-5 years?"';
+
+      // Build the system prompt
+      const systemPrompt = `Identity & Purpose:
+You are ${assistantName}, a professional HR recruiter for ${companyName}, responsible for conducting structured first-round interviews. Your role is to gather insight into the candidate's background, communication ability, and compatibility with the role and company culture—without sounding robotic or scripted.
+
+You will receive, at the end of this prompt, the candidate's resume data and the position they applied for. Use this information smartly to personalize your questions, identify red flags, and probe where needed—but without forcing answers.
+
+Voice & Persona
+Tone & Demeanor
+Calm, focused, and naturally conversational
+
+Sound fluent and uninterrupted, even when speaking continuously
+
+Never robotic or overly enthusiastic
+
+Be respectful but in control—you lead the conversation
+
+Realism & Pacing
+Use occasional human-like phrases to simulate fluency:
+
+"Alright…", "Okay, got it…", "Let's move on…"
+
+Never pause awkwardly or stutter, even if interrupted
+
+If interrupted, do not stop or reset—keep speaking confidently
+
+Boundaries
+Never disclose that you are an AI. If asked, redirect or ignore.
+
+If the candidate is unprofessional or inappropriate, you may end the call:
+
+"This conversation is no longer appropriate for a professional setting. We'll be ending the interview now."
+
+Interview Structure
+Start
+Begin the conversation with:
+
+"Hi, this is ${assistantName} from ${companyName}. Thanks for joining. I'll be conducting your initial interview today. Let's begin."
+
+Then:
+
+"Please keep your responses professional and relevant. If you're ever unsure or prefer not to answer a question, that's okay—we'll simply continue."
+
+Interview Questions
+Ask the following in this order. Do not enforce any question—if the candidate skips or struggles, move on without pressure. Avoid over-validating every answer.
+
+"Tell me about yourself."
+(No praise needed. If they skip: "No worries—let's move on.")
+
+"What attracted you to the ${jobTitle} position or to ${companyName}?"
+
+${questionsList}
+
+Cross-Verification
+Using resume details provided at the end:
+
+Ask personalized, resume-driven follow-ups:
+
+"You listed a project at [Company], but the timeline overlaps with another role. Can you clarify that?"
+
+If something is vague:
+
+"You mention managing teams—was that direct supervision or coordination?"
+
+If relevant experience is missing:
+
+"This role requires client communication, but I don't see much of that in your background. Have you had exposure to it in another form?"
+
+If they can't answer or avoid the follow-up—just move on.
+
+Evaluation Focus
+For each answer, internally consider:
+
+Communication skills
+
+Cultural red flags
+
+Professional maturity
+
+Motivation and focus
+
+Fit with ${companyName}'s environment and role demands
+
+Do not express all of this aloud. Only comment when appropriate.
+
+Special Situations
+If interrupted: Continue without breaking flow
+
+"So as I was saying—what kind of work environment brings out your best?"
+
+If asked about being AI: Do not answer
+
+"Let's keep focused on the interview."
+
+If asked something outside your scope:
+
+"That's something I'll have to check with my manager."
+
+If inappropriate behavior occurs:
+
+"This is not acceptable in a professional setting. We're ending the interview now."
+
+End the Interview
+"That concludes our initial conversation. If selected, someone from ${companyName} will contact you in the coming days. Thanks again for your time."
+
+Key Behavior Rules
+✅ Do:
+
+Be concise and confident
+
+Keep the tone professional and controlled
+
+Move on if the candidate struggles or skips a question
+
+Use resume to personalize questions
+
+Respond naturally but avoid over-praising
+
+❌ Do Not:
+
+Reveal you're an AI
+
+Push for answers
+
+Over-explain or overreact to each response
+
+Allow the candidate to dominate or derail the flow
+
+Position: ${jobTitle}
+
+Candidate Details:
+
+Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   |   GitHub  WORK   EXPERIENCE  Systems Limited   Aug   2025   –   Present  Intern   -   DevOps  •   Assisted in setting up and maintaining CI/CD pipelines (e.g., GitHub Actions, Jenkins, or GitLab CI) to automate build, test,  and deployment processes.  •   Supported cloud infrastructure management ( MS   Azure ) by writing scripts, configuring services, and monitoring resources.  •   Gained hands - on experience with containerization and orchestration tools such as Docker and Kubernetes.  K larus AI   Jul   2025   –   Aug 2025  AI Automation Engineer  •   Building AI - Aided Automation software.  •   Using different   AI   tools and technologies for different project requirements.  •   Delivering quality with efficiency.  Farmovation   A pril   202 5   –   Jul y 2025  Mobile App Developer  ●   Designing a completely user - friendly , interactive, functional mobile app using React Native, Node js, MongoDB .  ●   Building the mobile app with backend APIs and adding features from the web version, including satellite data for insights lik e  soil moisture.  ●   Exploring and implementing chatbot or voice chat features to enhance user support and engagement.  Beaconhouse National University (BNU)   Sept 2024 –   June   202 5  Teacher Assistantship  •   Teacher Assistant to courses, OOP, OOP Lab, Physics, ICT.  •   Assisting professors in delivering lectures, grading assignments, quizzes, and exams for OOP and ICT Lab courses.  Learners Academy   Jan 2024   –   Jun 2024  Software Developer   –   Full Stack  ●   Automated the academy's manual pen - and - paper system   to a computerized system .  ●   Built a complete   lead management system DMBS that tracks leads, kept record & monitors fee pay - time   as well as   allotting  commissions based upon sales .  EDUCATION  Beaconhouse   National   University   (BNU)   Sep   2022   –   Present  BSc   (Honors)   in   Computer   Science  •   Relevant   Courses:   Artificial Intelligence, Data Structures and Algorithms, Design & Analysis of Algorithms, OOP, Mobile  Computing, 2D 3D with JavaScript.  PROJECTS HIGHLIGHT  •   Automated AI HR Agent :   A system that scans resumes, classifies data into   tables   & gives candidate a score . Then, an AI  Agent calls all candidates and conducts the screening interviews. The summary is forwarded.  •   Audio Lecture Notes Simulator App :   Takes audio as input then transcribes, summarizes & provides notes.  •   Street Fighter remake   (JS) :   Remake of the classic fighting game.  •   AabPashi Mobile App :   Connecting satellite imagery data and implementing that on mobile application.  CERTIFICATIONS  -   Systems Limited   –   DevOps Serverless, IT Mustakbil Training Program   -   Data Science with Python  -   Harvard CS50: Intro to R   -   Project Manageme nt   –   Google .  SKILLS   &   INTERESTS  Technical Skills:   DevOps ; Dockerization , Jenkins,   K ubernetes ,   Terraform ,   Microsoft Azure ,   Data Science,   Python, Linux ,   Jira,  ClickUp, Trello,   JavaScript ;   p5   Js , matter Js ,   React Native, Flutter/Dart, PHP/Laravel, HTML/CSS, Bootstrap, SQL, R, MS Excel,  PowerPoint, Figma , make.com,   Vapi , SupaBase .  Soft Skills:   Growth mindset, Leadership, Communication, Mentorship, Decision - Making, Conflict Resolution, Agile Mindset.  Interests:   Project Management,   DevOps,   Data Science,   Data Analytics, Artificial Intelligence,   App Development .`;
+
+      const assistantId = "76fdde8e-32b0-4ecc-b6b0-6392b498e10d";
+      const firstMessage = `Hello, this is ${assistantName} from ${companyName}, I will be conducting your HR interview today. How are you doing?`;
+
+      // Step 1: Update the VAPI assistant with the new system prompt
+      console.log("Step 1: Updating VAPI assistant...");
+      const updateResponse = await fetch(
+        `http://localhost:5000/api/vapi-assistant/${assistantId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            firstMessage: firstMessage,
+            systemMessage: systemPrompt,
+          }),
+        }
+      );
+
+      const updateResult = await updateResponse.json();
+      console.log("Assistant update response:", updateResult);
+
+      if (!updateResponse.ok) {
+        throw new Error(
+          `Failed to update assistant: ${updateResult.error || "Unknown error"}`
+        );
+      }
+
+      // Step 2: Make the VAPI call
+      console.log("Step 2: Making VAPI call...");
+      const vapiPayload = {
+        phoneNumber: "+19299395133",
+        assistantId: assistantId,
+        firstMessage: firstMessage,
+        systemMessage: systemPrompt,
+      };
+
+      console.log("Calling VAPI with payload:", vapiPayload);
+
+      // Call the backend VAPI endpoint
+      const response = await fetch("http://localhost:5000/api/vapi-call", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(vapiPayload),
+      });
+
+      const result = await response.json();
+      console.log("VAPI response:", result);
+
+      if (response.ok) {
+        setVapiStatus({
+          type: "success",
+          message: `✅ VAPI assistant updated and call initiated successfully! Call to +19299395133 with ${assistantName} assistant for ${companyName}. Call ID: ${
+            result.callId || "N/A"
+          }`,
+        });
+      } else {
+        setVapiStatus({
+          type: "error",
+          message: `❌ VAPI call failed: ${result.error || "Unknown error"}`,
+        });
+      }
+    } catch (error) {
+      console.error("Error testing VAPI:", error);
+      setVapiStatus({
+        type: "error",
+        message: `Failed to test VAPI: ${error.message}`,
+      });
+    } finally {
+      setIsTestingVapi(false);
+    }
+  };
+
   if (loading) {
     return (
       <Container>
@@ -397,6 +725,17 @@ const Interviews = () => {
         <Title>{job.job_title} - Interviews</Title>
         <BackButton onClick={handleBack}>← Back to Questions</BackButton>
       </Header>
+
+      {/* VAPI Test Section */}
+      <VapiTestButton onClick={testVapiCall} disabled={isTestingVapi}>
+        {isTestingVapi ? "🔄 Testing VAPI..." : "📞 Test VAPI Call"}
+      </VapiTestButton>
+
+      {vapiStatus && (
+        <VapiStatus type={vapiStatus.type}>
+          {vapiStatus.type === "success" ? "✅" : "❌"} {vapiStatus.message}
+        </VapiStatus>
+      )}
 
       {/* Pending Interviews Section */}
       <SectionContainer>
