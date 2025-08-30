@@ -36,7 +36,6 @@ import "./App.css";
 import Candidates from "./components/Candidates";
 import Settings from "./components/Settings";
 import Billings from "./components/Billings";
-import Assistant from "./components/Assistant";
 
 function App() {
   const [jobs, setJobs] = useState(initialJobs);
@@ -123,7 +122,7 @@ function App() {
                       path="jobs/:jobId/interviews"
                       element={<Interviews />}
                     />
-                    <Route path="assistant" element={<Assistant />} />
+
                     <Route path="settings" element={<Settings />} />
                     <Route path="billings" element={<Billings />} />
                     <Route path="inspector" element={<TableInspector />} />

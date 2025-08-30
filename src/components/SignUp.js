@@ -683,25 +683,6 @@ function SignUp() {
     }
   };
 
-  const handleLinkedInSignUp = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "linkedin_oidc",
-        options: {
-          redirectTo: `${window.location.origin}/app`,
-          scopes: "openid profile email w_member_social",
-        },
-      });
-      if (error) setError(error.message);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -808,14 +789,7 @@ function SignUp() {
                 style={{ borderRadius: "4px" }}
               />
             </SocialButton>
-            <SocialButton onClick={handleLinkedInSignUp} disabled={loading}>
-              <img
-                src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/linkedin/linkedin-original.svg"
-                alt="LinkedIn"
-                width="20"
-                height="20"
-              />
-            </SocialButton>
+
             <SocialButton disabled>
               <img
                 src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/github/github-original.svg"

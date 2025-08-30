@@ -252,6 +252,7 @@ const ActiveJobs = () => {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch jobs from Supabase with applicant counts
   const fetchJobs = async () => {
@@ -365,7 +366,7 @@ const ActiveJobs = () => {
             workplace_type: jobData.workplaceType,
             location: jobData.jobLocation,
             job_active_duration: jobData.jobDuration,
-            post_linkedin: jobData.postToLinkedIn,
+
             skills: jobData.requiredSkills?.join(", ") || "",
             assistant: jobData.assistant || null,
             login_user_id: currentUserId,
@@ -404,31 +405,70 @@ const ActiveJobs = () => {
 
   const confirmDelete = async () => {
     try {
+      setIsDeleting(true);
+      setError(""); // Clear any previous errors
+
       // Get current user ID
       const currentUserId = await getCurrentUserId();
       if (!currentUserId) {
         setError("User not authenticated");
+        setIsDeleting(false);
         return;
       }
 
-      const { error } = await supabase
+      console.log(
+        "Attempting to delete job:",
+        selectedJob.job_id,
+        "for user:",
+        currentUserId
+      );
+
+      // Delete related records first to avoid foreign key constraints
+      // 1. Delete interview questions for this job
+      const { error: questionsError } = await supabase
+        .from("interview_questions")
+        .delete()
+        .eq("job_id", selectedJob.job_id)
+        .eq("login_user_id", currentUserId);
+
+      if (questionsError) {
+        console.error("Error deleting interview questions:", questionsError);
+        // Don't fail here - questions might not exist
+      }
+
+      // 2. Delete job-candidate relationships
+      const { error: candidatesError } = await supabase
+        .from("active_job_candidates")
+        .delete()
+        .eq("job_id", selectedJob.job_id);
+
+      if (candidatesError) {
+        console.error("Error deleting job candidates:", candidatesError);
+        // Don't fail here - relationships might not exist
+      }
+
+      // 3. Finally delete the job itself
+      const { error: jobError } = await supabase
         .from("active_jobs")
         .delete()
         .eq("job_id", selectedJob.job_id)
         .eq("login_user_id", currentUserId);
 
-      if (error) {
-        console.error("Error deleting job:", error);
-        setError(error.message);
+      if (jobError) {
+        console.error("Error deleting job:", jobError);
+        setError(`Failed to delete job: ${jobError.message}`);
       } else {
         console.log("Job deleted successfully");
         fetchJobs(); // Refresh the jobs list
         setIsDeleteModalOpen(false);
         setSelectedJob(null);
+        setError(""); // Clear any previous errors
       }
     } catch (err) {
       console.error("Error in confirmDelete:", err);
-      setError("Failed to delete job");
+      setError(`Failed to delete job: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -449,7 +489,7 @@ const ActiveJobs = () => {
           workplace_type: updatedData.workplaceType,
           location: updatedData.jobLocation,
           job_active_duration: updatedData.jobDuration,
-          post_linkedin: updatedData.postToLinkedIn,
+
           skills: updatedData.requiredSkills?.join(", ") || "",
           assistant: updatedData.assistant || null,
         })
@@ -650,12 +690,6 @@ const ActiveJobs = () => {
                   {selectedJob.skills || "None specified"}
                 </DetailValue>
               </DetailRow>
-              <DetailRow>
-                <DetailLabel>Post to LinkedIn:</DetailLabel>
-                <DetailValue>
-                  {selectedJob.post_linkedin ? "Yes" : "No"}
-                </DetailValue>
-              </DetailRow>
             </ModalBody>
             <ModalFooter>
               <SecondaryButton onClick={() => setIsViewModalOpen(false)}>
@@ -681,7 +715,7 @@ const ActiveJobs = () => {
             workplaceType: selectedJob.workplace_type,
             jobLocation: selectedJob.location,
             jobDuration: selectedJob.job_active_duration,
-            postToLinkedIn: selectedJob.post_linkedin,
+
             requiredSkills: selectedJob.skills
               ? selectedJob.skills.split(", ")
               : [],
@@ -710,10 +744,15 @@ const ActiveJobs = () => {
               </p>
             </ModalBody>
             <ModalFooter>
-              <SecondaryButton onClick={() => setIsDeleteModalOpen(false)}>
+              <SecondaryButton
+                onClick={() => setIsDeleteModalOpen(false)}
+                disabled={isDeleting}
+              >
                 Cancel
               </SecondaryButton>
-              <DangerButton onClick={confirmDelete}>Delete Job</DangerButton>
+              <DangerButton onClick={confirmDelete} disabled={isDeleting}>
+                {isDeleting ? "Deleting..." : "Delete Job"}
+              </DangerButton>
             </ModalFooter>
           </ModalContainer>
         </ModalOverlay>
