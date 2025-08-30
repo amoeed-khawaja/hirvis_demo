@@ -36,6 +36,7 @@ import "./App.css";
 import Candidates from "./components/Candidates";
 import Settings from "./components/Settings";
 import Billings from "./components/Billings";
+import ResumeViewer from "./components/ResumeViewer";
 
 function App() {
   const [jobs, setJobs] = useState(initialJobs);
@@ -121,6 +122,10 @@ function App() {
                     <Route
                       path="jobs/:jobId/interviews"
                       element={<Interviews />}
+                    />
+                    <Route
+                      path="jobs/:jobId/applicants/:candidateId/resume"
+                      element={<ResumeViewer />}
                     />
 
                     <Route path="settings" element={<Settings />} />

@@ -43,9 +43,64 @@ async function extractTextFromPDF(file) {
 // Function to parse Groq API response
 function parseGroqCandidateString(str) {
   try {
-    const parts = str.split("|").map((s) => s.trim());
-    if (parts.length >= 8) {
-      return {
+    console.log("Raw Groq response:", str);
+
+    // Split by lines and find the data row (not header or separator)
+    const lines = str
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    console.log("Split lines:", lines);
+
+    let dataRow = null;
+
+    // Look for the actual data row (contains email pattern or name pattern)
+    for (const line of lines) {
+      // Skip header row, separator row, and empty lines
+      if (line.includes("Name") && line.includes("Email")) continue; // Header
+      if (line.match(/^\|[\s\-|]+\|$/)) continue; // Separator row (e.g., | --- | --- |)
+      if (!line.includes("|")) continue; // Not a table row
+
+      // This should be the data row - look for email pattern specifically
+      if (line.includes("@") && line.includes("|")) {
+        // Contains email AND is a pipe-separated row
+        dataRow = line;
+        break;
+      }
+    }
+
+    if (!dataRow) {
+      console.warn(
+        "Could not find data row in Groq response, trying fallback parsing..."
+      );
+
+      // Fallback: Try to find any line with email pattern
+      for (const line of lines) {
+        if (line.includes("@") && line.split("|").length >= 7) {
+          console.log("Found potential data line via fallback:", line);
+          dataRow = line;
+          break;
+        }
+      }
+
+      if (!dataRow) {
+        console.error("Fallback parsing also failed");
+        return null;
+      }
+    }
+
+    console.log("Found data row:", dataRow);
+
+    // Parse the data row
+    const parts = dataRow
+      .split("|")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    console.log("Parsed parts:", parts);
+
+    if (parts.length >= 7) {
+      // At least 7 fields required
+      const result = {
         name: parts[0] || "N/A",
         email: parts[1] || "N/A",
         phone: parts[2] || "N/A",
@@ -53,10 +108,42 @@ function parseGroqCandidateString(str) {
         experience: parts[4] || "N/A",
         education: parts[5] || "N/A",
         degree: parts[6] || "N/A",
-        notes: parts[7] || "N/A",
+        notes: parts[7] || "N/A", // This might be undefined if only 7 parts
       };
+
+      console.log("Parsed result:", result);
+      return result;
     } else {
-      console.warn("Invalid Groq response format:", str);
+      console.warn(
+        "Invalid Groq response format - insufficient parts:",
+        parts.length,
+        "Parts:",
+        parts
+      );
+
+      // Try alternative parsing - maybe it's a simple pipe-delimited string without table formatting
+      const simpleParts = str
+        .split("|")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      console.log("Trying simple parsing, parts:", simpleParts);
+
+      if (simpleParts.length >= 7) {
+        const result = {
+          name: simpleParts[0] || "N/A",
+          email: simpleParts[1] || "N/A",
+          phone: simpleParts[2] || "N/A",
+          score: parseInt(simpleParts[3]) || 0,
+          experience: simpleParts[4] || "N/A",
+          education: simpleParts[5] || "N/A",
+          degree: simpleParts[6] || "N/A",
+          notes: simpleParts[7] || "N/A",
+        };
+
+        console.log("Simple parsing result:", result);
+        return result;
+      }
+
       return null;
     }
   } catch (error) {
@@ -792,9 +879,13 @@ const Applicants = () => {
         console.log("Groq API Response:", groqResponse);
 
         // Parse the response
+        console.log("About to parse Groq response:", groqResponse);
         const candidateData = parseGroqCandidateString(groqResponse);
+        console.log("Parsed candidate data:", candidateData);
+
         if (!candidateData) {
           console.error("Failed to parse candidate data from Groq response");
+          console.error("Raw response was:", groqResponse);
           continue;
         }
 
@@ -814,6 +905,61 @@ const Applicants = () => {
           continue;
         }
 
+        // Upload resume to Supabase storage
+        let resumeUrl = null;
+        try {
+          console.log(`Uploading resume ${file.name} to storage...`);
+          console.log("Candidate data for filename:", candidateData);
+
+          // Create unique filename: userId_candidateName_timestamp.pdf
+          // Use original filename if candidate name parsing failed
+          const candidateName =
+            candidateData.name &&
+            candidateData.name !== "N/A" &&
+            candidateData.name !== "Name"
+              ? candidateData.name
+              : file.name.replace(".pdf", "");
+
+          const sanitizedName = candidateName.replace(/[^a-zA-Z0-9]/g, "_");
+          const timestamp = Date.now();
+          const fileName = `${currentUserId}_${sanitizedName}_${timestamp}.pdf`;
+
+          console.log("Generated filename:", fileName);
+
+          // Upload to 'cv' bucket
+          const { data: uploadData, error: uploadError } =
+            await supabase.storage.from("cv").upload(fileName, file, {
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+          if (uploadError) {
+            console.error("Error uploading resume to storage:", uploadError);
+            setUploadStatus({
+              type: "error",
+              message: `Failed to upload resume: ${uploadError.message}`,
+            });
+            continue;
+          }
+
+          console.log("Resume uploaded successfully:", uploadData);
+
+          // Get public URL for the uploaded file
+          const { data: publicUrlData } = supabase.storage
+            .from("cv")
+            .getPublicUrl(fileName);
+
+          resumeUrl = publicUrlData?.publicUrl;
+          console.log("Resume public URL:", resumeUrl);
+        } catch (storageError) {
+          console.error("Error in resume upload process:", storageError);
+          setUploadStatus({
+            type: "error",
+            message: `Failed to process resume upload: ${storageError.message}`,
+          });
+          continue;
+        }
+
         // Insert candidate data into candidate_data table (using existing column names)
         const { data: newCandidate, error: insertError } = await supabase
           .from("candidate_data")
@@ -827,6 +973,7 @@ const Applicants = () => {
               Education: candidateData.education || "N/A",
               Degree: candidateData.degree || "N/A",
               Notes: candidateData.notes || "N/A",
+              Resume_URL: resumeUrl, // Store the resume URL
               login_user_id: currentUserId,
             },
           ])
@@ -1307,9 +1454,21 @@ const Applicants = () => {
                   <Td>{candidate["Education"]}</Td>
                   <Td>{candidate["Degree"] || "N/A"}</Td>
                   <Td>
-                    <ResumeLink href="#" onClick={(e) => e.preventDefault()}>
-                      View Resume
-                    </ResumeLink>
+                    {candidate["Resume_URL"] ? (
+                      <ResumeLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate(
+                            `/jobs/${jobId}/applicants/${candidate.id}/resume`
+                          );
+                        }}
+                      >
+                        View Resume
+                      </ResumeLink>
+                    ) : (
+                      <span style={{ color: "#9ca3af" }}>No Resume</span>
+                    )}
                   </Td>
                   <Td style={{ maxWidth: "200px", wordBreak: "break-word" }}>
                     {candidate["Notes"] ? (
