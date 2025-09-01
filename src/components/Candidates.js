@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import styled, { keyframes } from "styled-components";
 import { supabase } from "../supabase";
 import LoadingSpinner from "./LoadingSpinner";
@@ -107,6 +108,32 @@ const InfoRow = styled.div`
   color: ${({ theme }) => theme.colors.text.primary};
 `;
 
+const ResumeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+  color: #5f4bfa;
+  cursor: pointer;
+  transition: color 0.2s, transform 0.2s;
+  border-radius: 6px;
+  padding: 4px 0;
+
+  &:hover {
+    color: #af1763;
+    transform: translateX(2px);
+  }
+
+  &.disabled {
+    color: #6b7280;
+    cursor: not-allowed;
+    &:hover {
+      color: #6b7280;
+      transform: none;
+    }
+  }
+`;
+
 const Icon = styled.span`
   font-size: 1.1rem;
   color: #af1763;
@@ -190,6 +217,7 @@ const MailIcon = () => (
     <polyline points="22,6 12,13 2,6" />
   </svg>
 );
+
 const TrashIcon = () => (
   <svg
     width="22"
@@ -208,7 +236,27 @@ const TrashIcon = () => (
   </svg>
 );
 
+const PdfIcon = () => (
+  <svg
+    width="22"
+    height="22"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+    <path d="M9 16v-3h1.5a1.5 1.5 0 0 1 1.5 1.5v0a1.5 1.5 0 0 1-1.5 1.5H9z" />
+    <path d="M9 11v1.5" />
+    <path d="M13 13v3" />
+    <path d="M15 11v1" />
+  </svg>
+);
+
 const Candidates = () => {
+  const navigate = useNavigate();
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -269,6 +317,18 @@ const Candidates = () => {
     }, 500);
   };
 
+  const handleViewResume = (candidateId, resumeUrl) => {
+    if (!resumeUrl) {
+      alert("No resume available for this candidate");
+      return;
+    }
+
+    // Try to find the job ID for this candidate
+    // Since we don't have job_id directly in candidate_data, we'll open the resume URL directly
+    // or navigate to a general resume viewer
+    window.open(resumeUrl, "_blank");
+  };
+
   const filteredCandidates = candidates.filter((c) => {
     const name = (c["Full Name"] || c.name || "").toLowerCase();
     return name.includes(search.toLowerCase());
@@ -313,6 +373,20 @@ const Candidates = () => {
                 <InfoRow>
                   <Icon>📞</Icon> {formatPhone(c["Phone"] || c.phone)}
                 </InfoRow>
+                <ResumeRow
+                  className={!c["Resume_URL"] ? "disabled" : ""}
+                  onClick={() => handleViewResume(c.id, c["Resume_URL"])}
+                  title={
+                    c["Resume_URL"]
+                      ? "Click to view resume"
+                      : "No resume available"
+                  }
+                >
+                  <Icon>
+                    <PdfIcon />
+                  </Icon>
+                  {c["Resume_URL"] ? "View Resume" : "No Resume"}
+                </ResumeRow>
                 <CardActions>
                   <ActionIcon title="Email" onClick={() => handleEmail(email)}>
                     <MailIcon />

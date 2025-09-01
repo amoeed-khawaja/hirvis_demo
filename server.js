@@ -700,6 +700,7 @@ app.patch("/api/vapi-assistant/:assistantId", async (req, res) => {
 
     // VAPI Assistant Update payload
     const updatePayload = {
+      name: "Elliot", // Update the assistant name to Elliot
       firstMessage: firstMessage,
       firstMessageMode: "assistant-speaks-first",
       model: {
