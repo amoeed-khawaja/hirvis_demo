@@ -248,6 +248,8 @@ const Interviews = () => {
   const [statusMessage, setStatusMessage] = useState(null);
   const [isTestingVapi, setIsTestingVapi] = useState(false);
   const [vapiStatus, setVapiStatus] = useState(null);
+  const [callId, setCallId] = useState(null);
+  const [callStatus, setCallStatus] = useState(null);
 
   // Fetch job details
   const fetchJob = async () => {
@@ -666,12 +668,19 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
       console.log("VAPI response:", result);
 
       if (response.ok) {
+        const callId = result.callId || result.data?.id;
+        setCallId(callId);
         setVapiStatus({
           type: "success",
           message: `✅ VAPI assistant updated and call initiated successfully! Call to +19299395133 with ${assistantName} assistant for ${companyName}. Call ID: ${
-            result.callId || "N/A"
+            callId || "N/A"
           }`,
         });
+
+        // Start monitoring call status
+        if (callId) {
+          setTimeout(() => checkCallStatus(callId), 5000); // Check after 5 seconds
+        }
       } else {
         setVapiStatus({
           type: "error",
@@ -686,6 +695,87 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
       });
     } finally {
       setIsTestingVapi(false);
+    }
+  };
+
+  // Check call status and get transcriptions
+  const checkCallStatus = async (callId) => {
+    try {
+      console.log("🔍 Checking call status for:", callId);
+
+      const response = await fetch(
+        `http://localhost:5000/api/vapi-call-status/${callId}`
+      );
+      const result = await response.json();
+
+      if (response.ok) {
+        setCallStatus(result);
+        console.log("📊 Call Status:", result);
+
+        if (result.status === "completed") {
+          console.log("🎯 CALL COMPLETED!");
+
+          // Fetch call artifacts (transcript, summary, recording)
+          await fetchCallArtifacts(callId);
+
+          // Stop monitoring if call is completed
+          return;
+        }
+
+        // Continue monitoring if call is still in progress
+        if (result.status === "in-progress" || result.status === "ringing") {
+          setTimeout(() => checkCallStatus(callId), 10000); // Check every 10 seconds
+        }
+      } else {
+        console.error("Failed to check call status:", result.error);
+      }
+    } catch (error) {
+      console.error("Error checking call status:", error);
+    }
+  };
+
+  // Fetch call artifacts (transcript, summary, recording)
+  const fetchCallArtifacts = async (callId) => {
+    try {
+      console.log("🎁 Fetching call artifacts for:", callId);
+
+      const response = await fetch(
+        `http://localhost:5000/api/vapi-call-artifacts/${callId}`
+      );
+      const artifacts = await response.json();
+
+      if (response.ok) {
+        console.log("📦 Call Artifacts:", artifacts);
+
+        // Update call status with artifacts
+        setCallStatus((prev) => ({ ...prev, ...artifacts }));
+
+        // Log detailed information
+        if (artifacts.transcript && artifacts.transcript.length > 0) {
+          console.log("📝 FULL TRANSCRIPT:");
+          artifacts.transcript.forEach((entry, index) => {
+            console.log(
+              `${index + 1}. [${entry.role}] ${entry.message} (${entry.time}s)`
+            );
+          });
+        }
+
+        if (artifacts.summary) {
+          console.log("📋 AI SUMMARY:", artifacts.summary);
+        }
+
+        if (artifacts.recordingUrl) {
+          console.log("🎵 RECORDING URL:", artifacts.recordingUrl);
+        }
+
+        if (artifacts.structuredOutputs) {
+          console.log("🏗️ STRUCTURED OUTPUTS:", artifacts.structuredOutputs);
+        }
+      } else {
+        console.error("Failed to fetch call artifacts:", artifacts.error);
+      }
+    } catch (error) {
+      console.error("Error fetching call artifacts:", error);
     }
   };
 
@@ -737,6 +827,161 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
         <VapiStatus type={vapiStatus.type}>
           {vapiStatus.type === "success" ? "✅" : "❌"} {vapiStatus.message}
         </VapiStatus>
+      )}
+
+      {/* Call Status Display */}
+      {callId && callStatus && (
+        <SectionContainer>
+          <SectionHeader>
+            <SectionTitle>📞 Call Status: {callStatus.status}</SectionTitle>
+          </SectionHeader>
+
+          <div style={{ color: "#ffffff", fontSize: "0.9rem" }}>
+            <p>
+              <strong>Call ID:</strong> {callId}
+            </p>
+            <p>
+              <strong>Phone:</strong> {callStatus.phoneNumber || "+19299395133"}
+            </p>
+            {callStatus.duration && (
+              <p>
+                <strong>Duration:</strong> {callStatus.duration} seconds
+              </p>
+            )}
+
+            {callStatus.status === "completed" && (
+              <div style={{ marginTop: "16px" }}>
+                {/* Display Transcript */}
+                {callStatus.transcript && callStatus.transcript.length > 0 && (
+                  <div
+                    style={{
+                      marginBottom: "16px",
+                      padding: "12px",
+                      background: "rgba(95, 75, 250, 0.1)",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    <h4 style={{ color: "#5f4bfa", margin: "0 0 8px 0" }}>
+                      📝 Transcript
+                    </h4>
+                    <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                      {callStatus.transcript.map((entry, index) => (
+                        <div
+                          key={index}
+                          style={{ marginBottom: "8px", fontSize: "0.85rem" }}
+                        >
+                          <strong
+                            style={{
+                              color:
+                                entry.role === "assistant"
+                                  ? "#5f4bfa"
+                                  : "#af1763",
+                            }}
+                          >
+                            [
+                            {entry.role === "assistant"
+                              ? "Elliot"
+                              : "Candidate"}
+                            ]
+                          </strong>
+                          <span style={{ marginLeft: "8px" }}>
+                            {entry.message}
+                          </span>
+                          <span
+                            style={{
+                              color: "#6b7280",
+                              marginLeft: "8px",
+                              fontSize: "0.8rem",
+                            }}
+                          >
+                            ({entry.time}s)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Display Summary */}
+                {callStatus.summary && (
+                  <div
+                    style={{
+                      marginBottom: "16px",
+                      padding: "12px",
+                      background: "rgba(175, 23, 99, 0.1)",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    <h4 style={{ color: "#af1763", margin: "0 0 8px 0" }}>
+                      📋 AI Summary
+                    </h4>
+                    <p
+                      style={{
+                        margin: "0",
+                        fontSize: "0.9rem",
+                        lineHeight: "1.4",
+                      }}
+                    >
+                      {callStatus.summary}
+                    </p>
+                  </div>
+                )}
+
+                {/* Display Recording */}
+                {callStatus.recordingUrl && (
+                  <div
+                    style={{
+                      marginBottom: "16px",
+                      padding: "12px",
+                      background: "rgba(16, 185, 129, 0.1)",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    <h4 style={{ color: "#10b981", margin: "0 0 8px 0" }}>
+                      🎵 Call Recording
+                    </h4>
+                    <audio controls style={{ width: "100%" }}>
+                      <source src={callStatus.recordingUrl} type="audio/mpeg" />
+                      Your browser does not support the audio element.
+                    </audio>
+                    <a
+                      href={callStatus.recordingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: "inline-block",
+                        marginTop: "8px",
+                        color: "#10b981",
+                        textDecoration: "none",
+                      }}
+                    >
+                      🔗 Open Recording in New Tab
+                    </a>
+                  </div>
+                )}
+
+                {/* Console View Button */}
+                <button
+                  onClick={() => {
+                    console.log("📝 TRANSCRIPT:", callStatus.transcript);
+                    console.log("📋 SUMMARY:", callStatus.summary);
+                    console.log("🎵 RECORDING:", callStatus.recordingUrl);
+                  }}
+                  style={{
+                    background: "#374151",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "8px 16px",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  📊 View All Data in Console
+                </button>
+              </div>
+            )}
+          </div>
+        </SectionContainer>
       )}
 
       {/* Pending Interviews Section */}

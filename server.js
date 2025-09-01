@@ -698,7 +698,7 @@ app.patch("/api/vapi-assistant/:assistantId", async (req, res) => {
       return res.status(500).json({ error: "VAPI API key not configured" });
     }
 
-    // VAPI Assistant Update payload
+    // VAPI Assistant Update payload - only essential fields
     const updatePayload = {
       name: "Elliot", // Update the assistant name to Elliot
       firstMessage: firstMessage,
@@ -740,9 +740,12 @@ app.patch("/api/vapi-assistant/:assistantId", async (req, res) => {
 
     if (!response.ok) {
       console.error("VAPI Assistant Update error:", responseData);
+      console.error("Response status:", response.status);
+      console.error("Response headers:", response.headers);
       return res.status(response.status).json({
         error: "VAPI Assistant update failed",
         details: responseData,
+        status: response.status,
       });
     }
 
@@ -757,6 +760,42 @@ app.patch("/api/vapi-assistant/:assistantId", async (req, res) => {
       error: "Internal server error",
       message: error.message,
     });
+  }
+});
+
+// VAPI webhook endpoint for call completion
+app.post("/api/vapi-webhook", async (req, res) => {
+  try {
+    console.log("VAPI webhook received:", JSON.stringify(req.body, null, 2));
+
+    const { type, call, transcript, summary } = req.body;
+
+    if (type === "call-ended") {
+      console.log("🎯 CALL COMPLETED - Call ID:", call.id);
+      console.log("📞 Phone Number:", call.phoneNumber);
+      console.log("⏱️ Duration:", call.duration, "seconds");
+      console.log("📊 Status:", call.status);
+
+      if (transcript) {
+        console.log("📝 TRANSCRIPT:");
+        console.log("Full transcript:", transcript.text);
+        console.log("Speaker segments:", transcript.speakers);
+      }
+
+      if (summary) {
+        console.log("📋 SUMMARY:");
+        console.log("Summary text:", summary.text);
+        console.log("Summary model:", summary.model);
+      }
+
+      // TODO: Store this data in your database
+      // You can save transcript, summary, and call details to track interview results
+    }
+
+    res.json({ success: true, message: "Webhook received" });
+  } catch (error) {
+    console.error("VAPI webhook error:", error);
+    res.status(500).json({ error: "Webhook processing failed" });
   }
 });
 
@@ -780,30 +819,29 @@ app.post("/api/vapi-call", async (req, res) => {
       });
     }
 
-    // VAPI API call payload - correct structure for outbound calls
+    // VAPI API call payload - simplified structure with only supported fields
     const vapiPayload = {
       assistantId: assistantId,
-      phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID, // This is YOUR phone number that will make the call
+      phoneNumberId: process.env.VAPI_PHONE_NUMBER_ID,
       customer: {
-        number: phoneNumber, // This is the number TO BE CALLED
-        numberE164CheckEnabled: true,
-        assistantOverrides: {
-          firstMessage: firstMessage,
-          firstMessageMode: "assistant-speaks-first",
-          maxDurationSeconds: 600,
-          variableValues: {},
-          model: {
-            provider: "openai",
-            model: "gpt-4",
-            messages: [
-              {
-                role: "system",
-                content: systemMessage,
-              },
-            ],
-            maxTokens: 250,
-            temperature: 0.7,
-          },
+        number: phoneNumber,
+      },
+      assistantOverrides: {
+        firstMessage: firstMessage,
+        firstMessageMode: "assistant-speaks-first",
+        maxDurationSeconds: 600,
+        variableValues: {},
+        model: {
+          provider: "openai",
+          model: "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: systemMessage,
+            },
+          ],
+          maxTokens: 250,
+          temperature: 0.7,
         },
       },
     };
@@ -846,6 +884,235 @@ app.post("/api/vapi-call", async (req, res) => {
       error: "Internal server error",
       message: error.message,
     });
+  }
+});
+
+// VAPI Call Status endpoint
+app.get("/api/vapi-call-status/:callId", async (req, res) => {
+  try {
+    const { callId } = req.params;
+
+    if (!process.env.VAPI_API_KEY) {
+      return res.status(500).json({ error: "VAPI API key not configured" });
+    }
+
+    console.log("Checking status for call:", callId);
+
+    // Get call details from VAPI
+    const response = await fetch(`https://api.vapi.ai/call/${callId}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const callData = await response.json();
+
+    if (!response.ok) {
+      console.error("VAPI call status error:", callData);
+      return res.status(response.status).json({
+        error: "Failed to get call status",
+        details: callData,
+      });
+    }
+
+    console.log("Call status response:", callData);
+
+    // Extract relevant information
+    const result = {
+      id: callData.id,
+      status: callData.status,
+      phoneNumber: callData.phoneNumber,
+      duration: callData.duration,
+      transcript: callData.transcript,
+      summary: callData.summary,
+      metadata: callData.metadata,
+      // Add recording URL if available
+      recordingUrl: callData.recordingUrl,
+      // Add structured outputs if available
+      structuredOutputs: callData.structuredOutputs,
+      // Add call artifacts
+      artifacts: callData.artifacts,
+    };
+
+    res.json(result);
+  } catch (error) {
+    console.error("VAPI call status endpoint error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+});
+
+// VAPI Call Artifacts endpoint - get transcript, summary, and recording
+app.get("/api/vapi-call-artifacts/:callId", async (req, res) => {
+  try {
+    const { callId } = req.params;
+
+    if (!process.env.VAPI_API_KEY) {
+      return res.status(500).json({ error: "VAPI API key not configured" });
+    }
+
+    console.log("Fetching artifacts for call:", callId);
+
+    // Get call details from VAPI
+    const response = await fetch(`https://api.vapi.ai/call/${callId}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.VAPI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    const callData = await response.json();
+
+    if (!response.ok) {
+      console.error("VAPI call artifacts error:", callData);
+      return res.status(response.status).json({
+        error: "Failed to get call artifacts",
+        details: callData,
+      });
+    }
+
+    console.log("Call artifacts response:", callData);
+
+    // Extract artifacts
+    const artifacts = {
+      id: callData.id,
+      status: callData.status,
+      phoneNumber: callData.phoneNumber,
+      duration: callData.duration,
+      // Transcript data
+      transcript: callData.transcript || [],
+      // Summary data
+      summary: callData.summary || null,
+      // Recording URL
+      recordingUrl: callData.recordingUrl || null,
+      // Structured outputs
+      structuredOutputs: callData.structuredOutputs || null,
+      // Metadata
+      metadata: callData.metadata || {},
+      // Call events
+      events: callData.events || [],
+    };
+
+    res.json(artifacts);
+  } catch (error) {
+    console.error("VAPI call artifacts endpoint error:", error);
+    res.status(500).json({
+      error: "Internal server error",
+      message: error.message,
+    });
+  }
+});
+
+// Process call data before sending to webhook
+app.post("/api/process-call-data", async (req, res) => {
+  try {
+    console.log(
+      "📊 Process endpoint received:",
+      JSON.stringify(req.body, null, 2)
+    );
+
+    // Check if we have valid data
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log("⚠️ No data received in process endpoint");
+      return res.json({
+        message: "No data to process",
+        timestamp: new Date().toISOString(),
+        processed: false,
+      });
+    }
+
+    const { call, transcript, summary, recordingUrl } = req.body;
+
+    // Check if call object exists
+    if (!call) {
+      console.log("⚠️ No call object in request body");
+      return res.json({
+        message: "No call data to process",
+        timestamp: new Date().toISOString(),
+        processed: false,
+      });
+    }
+
+    // Process and format the data
+    const processedData = {
+      callId: call.id || "unknown",
+      phoneNumber: call.phoneNumber || "unknown",
+      duration: call.duration || 0,
+      status: call.status || "unknown",
+      transcript: transcript || [],
+      summary: summary || null,
+      recordingUrl: recordingUrl || null,
+      timestamp: new Date().toISOString(),
+      processed: true,
+    };
+
+    console.log("📊 Processed call data:", processedData);
+    res.json(processedData);
+  } catch (error) {
+    console.error("Error processing call data:", error);
+    res.status(500).json({ error: "Failed to process call data" });
+  }
+});
+
+// Enhanced webhook endpoint for VAPI workflow
+app.post("/api/vapi-webhook", async (req, res) => {
+  try {
+    console.log(
+      "🎯 Enhanced VAPI webhook received:",
+      JSON.stringify(req.body, null, 2)
+    );
+
+    // Check if we have valid data
+    if (!req.body || Object.keys(req.body).length === 0) {
+      console.log("⚠️ Webhook received empty body");
+      return res.json({
+        success: true,
+        message: "Webhook received (empty body)",
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const { type, call, transcript, summary, recordingUrl } = req.body;
+
+    if (type === "call-ended") {
+      console.log("🎯 CALL COMPLETED - Call ID:", call?.id || "unknown");
+      console.log("📞 Phone Number:", call?.phoneNumber || "unknown");
+      console.log("⏱️ Duration:", call?.duration || "unknown", "seconds");
+      console.log("📊 Status:", call?.status || "unknown");
+
+      if (transcript) {
+        console.log("📝 TRANSCRIPT:");
+        console.log("Full transcript:", transcript.text);
+        console.log("Speaker segments:", transcript.speakers);
+      }
+
+      if (summary) {
+        console.log("📋 SUMMARY:");
+        console.log("Summary text:", summary.text);
+        console.log("Summary model:", summary.model);
+      }
+
+      if (recordingUrl) {
+        console.log("🎵 RECORDING URL:", recordingUrl);
+      }
+
+      // TODO: Store in database or send to frontend
+      console.log("✅ Webhook data processed successfully");
+    } else {
+      console.log("ℹ️ Webhook received non-call-ended event:", type);
+    }
+
+    res.json({
+      success: true,
+      message: "Enhanced webhook received",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("Enhanced VAPI webhook error:", error);
+    res.status(500).json({ error: "Webhook processing failed" });
   }
 });
 
