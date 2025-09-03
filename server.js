@@ -829,7 +829,7 @@ app.post("/api/vapi-call", async (req, res) => {
       assistantOverrides: {
         firstMessage: firstMessage,
         firstMessageMode: "assistant-speaks-first",
-        maxDurationSeconds: 600,
+        maxDurationSeconds: 240,
         variableValues: {},
         model: {
           provider: "openai",

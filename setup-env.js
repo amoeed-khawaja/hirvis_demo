@@ -20,6 +20,10 @@ REACT_APP_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
 # Client Configuration
 CLIENT_URL=http://localhost:3001
 PORT=5000
+
+# VAPI Configuration
+VAPI_API_KEY=your_vapi_api_key_here
+VAPI_PHONE_NUMBER_ID=1531c904-e8de-4812-8785-24835a195236
 `;
 
 const envPath = path.join(__dirname, ".env");
@@ -29,6 +33,7 @@ try {
   console.log("✅ .env file created successfully!");
   console.log("📝 Please update the following values in your .env file:");
   console.log("   - GROQ_API_KEY: Get from https://console.groq.com/");
+  console.log("   - VAPI_API_KEY: Get from your VAPI dashboard");
   console.log("   - STRIPE_WEBHOOK_SECRET: Get from your Stripe dashboard");
   console.log(
     "   - REACT_APP_STRIPE_PUBLISHABLE_KEY: Get from your Stripe dashboard"

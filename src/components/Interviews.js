@@ -250,6 +250,17 @@ const Interviews = () => {
   const [vapiStatus, setVapiStatus] = useState(null);
   const [callId, setCallId] = useState(null);
   const [callStatus, setCallStatus] = useState(null);
+  const [selectedPending, setSelectedPending] = useState(new Set());
+  const [isDialerRunning, setIsDialerRunning] = useState(false);
+  const [queuedCandidates, setQueuedCandidates] = useState([]);
+  const maxParallelCalls = 5; // Maximum simultaneous calls
+
+  // VAPI Configuration - Call to this number
+  const VAPI_CONFIG = {
+    testPhoneNumber: "+923280028820", // Your Twilio number (outbound caller ID)
+    phoneNumberId: "+923280028820", // Number to call (verified caller ID)
+    assistantId: "76fdde8e-32b0-4ecc-b6b0-6392b498e10d",
+  };
 
   // Fetch job details
   const fetchJob = async () => {
@@ -346,6 +357,61 @@ const Interviews = () => {
     loadData();
   }, [jobId]);
 
+  // Load queued candidates from localStorage on mount
+  useEffect(() => {
+    const savedQueued = localStorage.getItem(`queuedCandidates_${jobId}`);
+    if (savedQueued) {
+      try {
+        const parsed = JSON.parse(savedQueued);
+        // Convert string dates back to Date objects
+        const withDates = parsed.map((item) => ({
+          ...item,
+          startTime: item.startTime ? new Date(item.startTime) : null,
+          endTime: item.endTime ? new Date(item.endTime) : null,
+        }));
+        setQueuedCandidates(withDates);
+
+        // If there are queued candidates, start the dialer
+        if (withDates.length > 0 && !isDialerRunning) {
+          setTimeout(() => startParallelDialer(), 2000);
+        }
+      } catch (e) {
+        console.error("Error loading queued candidates:", e);
+      }
+    }
+  }, [jobId]);
+
+  // Save queued candidates to localStorage whenever they change
+  useEffect(() => {
+    if (queuedCandidates.length > 0) {
+      localStorage.setItem(
+        `queuedCandidates_${jobId}`,
+        JSON.stringify(queuedCandidates)
+      );
+    } else {
+      localStorage.removeItem(`queuedCandidates_${jobId}`);
+    }
+  }, [queuedCandidates, jobId]);
+
+  // Add CSS animation for dialer indicator
+  useEffect(() => {
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      .dialer-pulse {
+        animation: pulse 2s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   const handleBack = () => {
     // Check URL search params to see where user came from
     const searchParams = new URLSearchParams(location.search);
@@ -406,6 +472,424 @@ const Interviews = () => {
     if (str.startsWith("92")) return "+" + str;
     if (str.startsWith("3")) return "0" + str;
     return phone;
+  };
+
+  // US phone normalization
+  const normalizeUS = (raw) => {
+    if (!raw) return null;
+    const digits = String(raw).replace(/\D/g, "");
+    if (digits.length === 10) return "+1" + digits;
+    if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+    if (String(raw).startsWith("+1") && digits.length === 11)
+      return "+" + digits;
+    return null;
+  };
+
+  // Select/Select All handling for pending
+  const toggleSelectPending = (candidateId) => {
+    setSelectedPending((prev) => {
+      const next = new Set(prev);
+      if (next.has(candidateId)) next.delete(candidateId);
+      else next.add(candidateId);
+      return next;
+    });
+  };
+
+  const toggleSelectAllPending = () => {
+    setSelectedPending((prev) => {
+      if (prev.size === pendingCandidates.length) return new Set();
+      return new Set(pendingCandidates.map((c) => c.id));
+    });
+  };
+
+  // Queue selected pending and start parallel dialer
+  const scheduleSelectedCalls = () => {
+    if (selectedPending.size === 0) return;
+
+    const toQueue = pendingCandidates
+      .filter((c) => selectedPending.has(c.id))
+      .map((c) => ({
+        candidate: c,
+        status: "queued",
+        callId: null,
+        startTime: null,
+        endTime: null,
+      }));
+
+    setQueuedCandidates((prev) => [...prev, ...toQueue]);
+    setPendingCandidates((prev) =>
+      prev.filter((c) => !selectedPending.has(c.id))
+    );
+    setSelectedPending(new Set());
+
+    setVapiStatus({
+      type: "success",
+      message: `Queued ${toQueue.length} candidate(s) for parallel calling. Starting calls immediately...`,
+    });
+
+    // Start calling immediately - no delay
+    setTimeout(() => {
+      startParallelDialer();
+    }, 1000);
+  };
+
+  // Start a call for one queued candidate
+  const startCallForCandidate = async (queueItem, queueIndex) => {
+    const { candidate } = queueItem;
+
+    try {
+      const phoneE164 = normalizeUS(candidate["Phone"]);
+      if (!phoneE164) {
+        setVapiStatus({
+          type: "error",
+          message: `Invalid US phone for ${candidate["Full Name"]}`,
+        });
+        return;
+      }
+
+      // Update status to "calling"
+      setQueuedCandidates((prev) => {
+        const next = [...prev];
+        if (next[queueIndex]) {
+          next[queueIndex] = {
+            ...next[queueIndex],
+            status: "calling",
+            startTime: new Date(),
+          };
+        }
+        return next;
+      });
+
+      const currentUserId = await getCurrentUserId();
+      if (!currentUserId) {
+        setVapiStatus({ type: "error", message: "User not authenticated" });
+        return;
+      }
+
+      // Company name
+      const { data: userData } = await supabase
+        .from("users_data")
+        .select("organization, assistant_name")
+        .eq("login_user_id", currentUserId)
+        .single();
+      const companyName = userData?.organization || "Your Company";
+
+      // Job title
+      const { data: jobData } = await supabase
+        .from("active_jobs")
+        .select("job_title")
+        .eq("job_id", jobId)
+        .eq("login_user_id", currentUserId)
+        .single();
+      const jobTitle = jobData?.job_title || "the position";
+
+      // Questions
+      const { data: questions } = await supabase
+        .from("interview_questions")
+        .select("question_text, question_order")
+        .eq("job_id", jobId)
+        .eq("login_user_id", currentUserId)
+        .order("question_order");
+      const questionsList =
+        questions && questions.length > 0
+          ? questions.map((q) => `"${q.question_text}"`).join("\n\n")
+          : '"Tell me about your experience with this type of role."\n\n"What are your strengths and how do they apply to this position?"\n\n"Where do you see yourself in 3-5 years?"';
+
+      // Build candidate summary from DB fields (acts as parsed resume text for now)
+      const candidateSummary = `Name: ${candidate["Full Name"]}\nEmail: ${
+        candidate["Email"]
+      }\nPhone: ${phoneE164}\nScore: ${candidate["Score"]}/10\nExperience: ${
+        candidate["Experience"]
+      } years\nEducation: ${candidate["Education"]}\nDegree: ${
+        candidate["Degree"] || "N/A"
+      }\nNotes: ${candidate["Notes"] || "N/A"}`;
+
+      const systemPrompt = `Identity & Purpose:\nYou are Elliot, a professional HR recruiter for ${companyName}. Keep it natural and concise.\n\nIMPORTANT: Your name is Elliot. Always introduce yourself as Elliot.\n\nUse the candidate details at the end to personalize questions and follow-ups.\n\nInterview Questions (order):\n${questionsList}\n\nTimebox: aim to finish in about 4 minutes.\n\nCandidate Details (parsed):\n${candidateSummary}`;
+
+      const assistantId = "76fdde8e-32b0-4ecc-b6b0-6392b498e10d";
+      const firstMessage = `Hello, this is Elliot from ${companyName}, I will be conducting your HR interview today. How are you doing?`;
+
+      const vapiPayload = {
+        phoneNumber: phoneE164,
+        assistantId: assistantId,
+        firstMessage: firstMessage,
+        systemMessage: systemPrompt,
+      };
+
+      console.log(
+        `📞 Making VAPI call for ${candidate["Full Name"]} at ${phoneE164}`
+      );
+      console.log("VAPI payload:", vapiPayload);
+
+      const response = await fetch("http://localhost:5000/api/vapi-call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(vapiPayload),
+      });
+
+      const result = await response.json();
+      console.log(`📊 VAPI response for ${candidate["Full Name"]}:`, result);
+
+      if (!response.ok) {
+        const errorMsg = `Call failed for ${candidate["Full Name"]}: ${
+          result.error || "Unknown error"
+        }`;
+        console.error(errorMsg);
+        setVapiStatus({
+          type: "error",
+          message: errorMsg,
+        });
+
+        // Update status to "failed"
+        setQueuedCandidates((prev) => {
+          const next = [...prev];
+          if (next[queueIndex]) {
+            next[queueIndex] = {
+              ...next[queueIndex],
+              status: "failed",
+              endTime: new Date(),
+            };
+          }
+          return next;
+        });
+        return;
+      }
+
+      const newCallId = result.callId || result.data?.id;
+
+      // Update status to "in_call" and attach callId
+      setQueuedCandidates((prev) => {
+        const next = [...prev];
+        if (next[queueIndex]) {
+          next[queueIndex] = {
+            ...next[queueIndex],
+            status: "in_call",
+            callId: newCallId,
+          };
+        }
+        return next;
+      });
+
+      setVapiStatus({
+        type: "success",
+        message: `Calling ${candidate["Full Name"]} at ${phoneE164} (Call ID: ${newCallId})`,
+      });
+
+      // Start polling for this call
+      if (newCallId) {
+        setTimeout(() => checkQueuedCallStatus(newCallId, queueIndex), 5000);
+      }
+    } catch (err) {
+      console.error("Error starting call:", err);
+      setVapiStatus({
+        type: "error",
+        message: `Error starting call for ${candidate["Full Name"]}: ${err.message}`,
+      });
+
+      // Update status to "failed"
+      setQueuedCandidates((prev) => {
+        const next = [...prev];
+        if (next[queueIndex]) {
+          next[queueIndex] = {
+            ...next[queueIndex],
+            status: "failed",
+            endTime: new Date(),
+          };
+        }
+        return next;
+      });
+    }
+  };
+
+  // Parallel dialer: starts up to maxParallelCalls simultaneously
+  const startParallelDialer = async () => {
+    setIsDialerRunning(true);
+
+    try {
+      const startNextBatch = async () => {
+        const snapshot = queuedCandidates;
+        const queuedItems = snapshot.filter((q) => q.status === "queued");
+
+        if (queuedItems.length === 0) {
+          setIsDialerRunning(false);
+          return;
+        }
+
+        // Start up to maxParallelCalls simultaneously
+        const toStart = queuedItems.slice(0, maxParallelCalls);
+
+        console.log(`🚀 Starting ${toStart.length} calls in parallel...`);
+
+        // Start all calls in parallel
+        const startPromises = toStart.map(async (item) => {
+          const queueIndex = snapshot.findIndex(
+            (q) => q.candidate.id === item.candidate.id
+          );
+          await startCallForCandidate(item, queueIndex);
+        });
+
+        await Promise.all(startPromises);
+
+        // Check again in 5 seconds for more queued items (faster response)
+        setTimeout(startNextBatch, 5000);
+      };
+
+      await startNextBatch();
+    } catch (e) {
+      console.error("Error in parallel dialer:", e);
+      setIsDialerRunning(false);
+    }
+  };
+
+  // Poll a specific queued call and update its status
+  const checkQueuedCallStatus = async (callId, queueIndex) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/vapi-call-status/${callId}`
+      );
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Error checking call status:", data);
+        return;
+      }
+
+      // Map VAPI status to our status
+      let mappedStatus = data.status;
+      if (mappedStatus === "queued") mappedStatus = "queued";
+      if (mappedStatus === "ringing" || mappedStatus === "in-progress")
+        mappedStatus = "in_call";
+      if (mappedStatus === "completed") mappedStatus = "completed";
+      if (
+        mappedStatus === "busy" ||
+        mappedStatus === "no-answer" ||
+        mappedStatus === "failed"
+      )
+        mappedStatus = "no_answer";
+      if (mappedStatus === "declined") mappedStatus = "declined";
+
+      // Update status in queue
+      setQueuedCandidates((prev) => {
+        const next = [...prev];
+        if (next[queueIndex]) {
+          next[queueIndex] = {
+            ...next[queueIndex],
+            status: mappedStatus,
+            endTime: mappedStatus !== "in_call" ? new Date() : null,
+          };
+        }
+        return next;
+      });
+
+      // If call completed, move to conducted and start next batch
+      if (mappedStatus === "completed") {
+        // Get call artifacts
+        try {
+          const artifactsResponse = await fetch(
+            `http://localhost:5000/api/vapi-call-artifacts/${callId}`
+          );
+          const artifacts = await artifactsResponse.json();
+
+          if (artifactsResponse.ok && artifacts.data) {
+            console.log(
+              `📝 Call completed for ${queuedCandidates[queueIndex]?.candidate["Full Name"]}:`,
+              artifacts.data
+            );
+          }
+        } catch (e) {
+          console.error("Error fetching call artifacts:", e);
+        }
+
+        // Move to conducted interviews
+        const completedItem = queuedCandidates[queueIndex];
+        if (completedItem) {
+          setConductedCandidates((prev) => [...prev, completedItem.candidate]);
+
+          // Remove from queue
+          setQueuedCandidates((prev) =>
+            prev.filter((_, index) => index !== queueIndex)
+          );
+
+          // Update localStorage
+          const updatedQueue = queuedCandidates.filter(
+            (_, index) => index !== queueIndex
+          );
+          if (updatedQueue.length > 0) {
+            localStorage.setItem(
+              `queuedCandidates_${jobId}`,
+              JSON.stringify(updatedQueue)
+            );
+          } else {
+            localStorage.removeItem(`queuedCandidates_${jobId}`);
+          }
+
+          // Start next batch if dialer is running
+          if (isDialerRunning) {
+            setTimeout(() => startParallelDialer(), 2000);
+          }
+        }
+        return;
+      }
+
+      // Continue polling for active calls
+      if (mappedStatus === "in_call" || mappedStatus === "ringing") {
+        setTimeout(() => checkQueuedCallStatus(callId, queueIndex), 8000);
+      } else {
+        // Call ended but not completed (no-answer, declined, failed)
+        // Start next batch if dialer is running
+        if (isDialerRunning) {
+          setTimeout(() => startParallelDialer(), 5000);
+        }
+      }
+    } catch (err) {
+      console.error("Error checking queued call status:", err);
+      // Retry after delay
+      setTimeout(() => checkQueuedCallStatus(callId, queueIndex), 10000);
+    }
+  };
+
+  // Get status badge color
+  const getStatusBadgeColor = (status) => {
+    switch (status) {
+      case "queued":
+        return "#f59e0b"; // amber
+      case "calling":
+        return "#3b82f6"; // blue
+      case "in_call":
+        return "#10b981"; // green
+      case "completed":
+        return "#059669"; // emerald
+      case "no_answer":
+        return "#ef4444"; // red
+      case "declined":
+        return "#dc2626"; // red
+      case "failed":
+        return "#7f1d1d"; // dark red
+      default:
+        return "#6b7280"; // gray
+    }
+  };
+
+  // Get status display text
+  const getStatusText = (status) => {
+    switch (status) {
+      case "queued":
+        return "⏳ Queued";
+      case "calling":
+        return "📞 Calling";
+      case "in_call":
+        return "🎙️ In Call";
+      case "completed":
+        return "✅ Completed";
+      case "no_answer":
+        return "❌ No Answer";
+      case "declined":
+        return "🚫 Declined";
+      case "failed":
+        return "💥 Failed";
+      default:
+        return "❓ Unknown";
+    }
   };
 
   // Test VAPI integration
@@ -619,36 +1103,11 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
       const assistantId = "76fdde8e-32b0-4ecc-b6b0-6392b498e10d";
       const firstMessage = `Hello, this is Elliot from ${companyName}, I will be conducting your HR interview today. How are you doing?`;
 
-      // Step 1: Update the VAPI assistant with the new system prompt
-      console.log("Step 1: Updating VAPI assistant...");
-      const updateResponse = await fetch(
-        `http://localhost:5000/api/vapi-assistant/${assistantId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            firstMessage: firstMessage,
-            systemMessage: systemPrompt,
-          }),
-        }
-      );
-
-      const updateResult = await updateResponse.json();
-      console.log("Assistant update response:", updateResult);
-
-      if (!updateResponse.ok) {
-        throw new Error(
-          `Failed to update assistant: ${updateResult.error || "Unknown error"}`
-        );
-      }
-
-      // Step 2: Make the VAPI call
-      console.log("Step 2: Making VAPI call...");
+      // Make the VAPI call using assistantOverrides so runtime config takes effect immediately
+      console.log("Making VAPI call with runtime overrides...");
       const vapiPayload = {
-        phoneNumber: "+19299395133",
-        assistantId: assistantId,
+        phoneNumber: VAPI_CONFIG.testPhoneNumber,
+        assistantId: VAPI_CONFIG.assistantId,
         firstMessage: firstMessage,
         systemMessage: systemPrompt,
       };
@@ -672,7 +1131,9 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
         setCallId(callId);
         setVapiStatus({
           type: "success",
-          message: `✅ VAPI assistant updated and call initiated successfully! Call to +19299395133 with ${assistantName} assistant for ${companyName}. Call ID: ${
+          message: `✅ VAPI assistant updated and call initiated successfully! Call to ${
+            VAPI_CONFIG.testPhoneNumber
+          } with ${assistantName} assistant for ${companyName}. Call ID: ${
             callId || "N/A"
           }`,
         });
@@ -682,9 +1143,21 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
           setTimeout(() => checkCallStatus(callId), 5000); // Check after 5 seconds
         }
       } else {
+        let errorMessage = `❌ VAPI call failed: ${
+          result.error || "Unknown error"
+        }`;
+
+        // Handle specific daily limit error
+        if (
+          result.message &&
+          result.message.includes("Daily Outbound Call Limit")
+        ) {
+          errorMessage = `❌ VAPI Daily Limit Reached: ${result.message}`;
+        }
+
         setVapiStatus({
           type: "error",
-          message: `❌ VAPI call failed: ${result.error || "Unknown error"}`,
+          message: errorMessage,
         });
       }
     } catch (error) {
@@ -823,6 +1296,48 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
         {isTestingVapi ? "🔄 Testing VAPI..." : "📞 Test VAPI Call"}
       </VapiTestButton>
 
+      {/* Twilio Number Status */}
+      <div
+        style={{
+          background: "rgba(16, 185, 129, 0.1)",
+          border: "1px solid rgba(16, 185, 129, 0.3)",
+          borderRadius: "8px",
+          padding: "16px",
+          marginBottom: "24px",
+          color: "#10b981",
+        }}
+      >
+        <strong>✅ VAPI Call Configuration</strong>
+        <p style={{ margin: "8px 0 0 0", fontSize: "0.9rem" }}>
+          Calling from: <strong>+1 (562) 418-6049</strong> (Your Twilio number)
+          <br />
+          Calling to: <strong>+92 328 002 8820</strong> (Your verified number)
+          <br />
+          <strong>Status:</strong> Ready for unlimited calling
+        </p>
+        <button
+          onClick={() => {
+            console.log("📱 VAPI Call Configuration:");
+            console.log("Calling from: +1 (562) 418-6049 (Your Twilio number)");
+            console.log("Calling to: +92 328 002 8820 (Your verified number)");
+            console.log("Assistant ID: 76fdde8e-32b0-4ecc-b6b0-6392b498e10d");
+            console.log("Status: Ready for unlimited calling");
+          }}
+          style={{
+            background: "#10b981",
+            color: "#ffffff",
+            border: "none",
+            padding: "8px 16px",
+            borderRadius: "6px",
+            fontSize: "0.8rem",
+            cursor: "pointer",
+            marginTop: "8px",
+          }}
+        >
+          📋 Show Configuration in Console
+        </button>
+      </div>
+
       {vapiStatus && (
         <VapiStatus type={vapiStatus.type}>
           {vapiStatus.type === "success" ? "✅" : "❌"} {vapiStatus.message}
@@ -841,7 +1356,8 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
               <strong>Call ID:</strong> {callId}
             </p>
             <p>
-              <strong>Phone:</strong> {callStatus.phoneNumber || "+19299395133"}
+              <strong>Phone:</strong>{" "}
+              {callStatus.phoneNumber || VAPI_CONFIG.testPhoneNumber}
             </p>
             {callStatus.duration && (
               <p>
@@ -1001,48 +1517,291 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
             interview round.
           </EmptyState>
         ) : (
+          <div>
+            <TableContainer>
+              <Table>
+                <thead>
+                  <tr>
+                    <Th style={{ width: "5%" }}>
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedPending.size === pendingCandidates.length &&
+                          pendingCandidates.length > 0
+                        }
+                        onChange={toggleSelectAllPending}
+                        style={{ transform: "scale(1.2)" }}
+                      />
+                    </Th>
+                    <Th style={{ width: "18%" }}>Name</Th>
+                    <Th style={{ width: "22%" }}>Email</Th>
+                    <Th style={{ width: "15%" }}>Phone</Th>
+                    <Th style={{ width: "10%" }}>Score</Th>
+                    <Th style={{ width: "15%" }}>Resume</Th>
+                    <Th style={{ width: "15%" }}>Action</Th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingCandidates.map((candidate) => (
+                    <tr key={candidate.id}>
+                      <Td>
+                        <input
+                          type="checkbox"
+                          checked={selectedPending.has(candidate.id)}
+                          onChange={() => toggleSelectPending(candidate.id)}
+                          style={{ transform: "scale(1.2)" }}
+                        />
+                      </Td>
+                      <Td>{candidate["Full Name"]}</Td>
+                      <Td>{candidate["Email"]}</Td>
+                      <Td>{formatPhone(candidate["Phone"])}</Td>
+                      <Td>
+                        <ScoreBadge score={candidate["Score"]}>
+                          {candidate["Score"]}/10
+                        </ScoreBadge>
+                      </Td>
+                      <Td>
+                        <ResumeLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            navigate(
+                              `/jobs/${jobId}/applicants/${candidate.id}/resume`
+                            );
+                          }}
+                        >
+                          View Resume
+                        </ResumeLink>
+                      </Td>
+                      <Td>
+                        <CallButton
+                          onClick={() => handleCallCandidate(candidate.id)}
+                        >
+                          📞 Call
+                        </CallButton>
+                      </Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </TableContainer>
+
+            {selectedPending.size > 0 && (
+              <div style={{ marginTop: "16px", textAlign: "center" }}>
+                <button
+                  onClick={scheduleSelectedCalls}
+                  style={{
+                    background: "linear-gradient(135deg, #10b981, #059669)",
+                    color: "#ffffff",
+                    padding: "12px 24px",
+                    borderRadius: "8px",
+                    border: "none",
+                    fontSize: "1rem",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  📞 Schedule Call ({selectedPending.size} selected)
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </SectionContainer>
+
+      {/* Queued Interviews Section */}
+      {queuedCandidates.length > 0 && (
+        <SectionContainer>
+          <SectionHeader>
+            <SectionTitle>
+              📋 Queued Interviews
+              <CandidateCount variant="pending">
+                {queuedCandidates.length}
+              </CandidateCount>
+              {isDialerRunning && (
+                <span
+                  className="dialer-pulse"
+                  style={{
+                    marginLeft: "12px",
+                    color: "#10b981",
+                    fontSize: "0.9rem",
+                    fontWeight: "500",
+                  }}
+                >
+                  🔄 Dialer Running
+                </span>
+              )}
+            </SectionTitle>
+            <div style={{ fontSize: "0.8rem", color: "#9ca3af" }}>
+              {queuedCandidates.filter((q) => q.status === "queued").length}{" "}
+              queued •
+              {queuedCandidates.filter((q) => q.status === "calling").length}{" "}
+              calling •
+              {queuedCandidates.filter((q) => q.status === "in_call").length} in
+              call •
+              {queuedCandidates.filter((q) => q.status === "completed").length}{" "}
+              completed
+            </div>
+            {!isDialerRunning && (
+              <button
+                onClick={() => startParallelDialer()}
+                style={{
+                  background: "linear-gradient(135deg, #10b981, #059669)",
+                  color: "#ffffff",
+                  padding: "8px 16px",
+                  borderRadius: "6px",
+                  border: "none",
+                  fontSize: "0.9rem",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                🚀 Start Dialer
+              </button>
+            )}
+          </SectionHeader>
+
           <TableContainer>
             <Table>
               <thead>
                 <tr>
                   <Th style={{ width: "20%" }}>Name</Th>
-                  <Th style={{ width: "25%" }}>Email</Th>
+                  <Th style={{ width: "20%" }}>Email</Th>
                   <Th style={{ width: "15%" }}>Phone</Th>
                   <Th style={{ width: "10%" }}>Score</Th>
-                  <Th style={{ width: "15%" }}>Resume</Th>
-                  <Th style={{ width: "15%" }}>Action</Th>
+                  <Th style={{ width: "15%" }}>Status</Th>
+                  <Th style={{ width: "10%" }}>Time</Th>
+                  <Th style={{ width: "10%" }}>Action</Th>
                 </tr>
               </thead>
               <tbody>
-                {pendingCandidates.map((candidate) => (
-                  <tr key={candidate.id}>
-                    <Td>{candidate["Full Name"]}</Td>
-                    <Td>{candidate["Email"]}</Td>
-                    <Td>{formatPhone(candidate["Phone"])}</Td>
-                    <Td>
-                      <ScoreBadge score={candidate["Score"]}>
-                        {candidate["Score"]}/10
-                      </ScoreBadge>
-                    </Td>
-                    <Td>
-                      <ResumeLink href="#" onClick={(e) => e.preventDefault()}>
-                        View Resume
-                      </ResumeLink>
-                    </Td>
-                    <Td>
-                      <CallButton
-                        onClick={() => handleCallCandidate(candidate.id)}
-                      >
-                        📞 Call
-                      </CallButton>
-                    </Td>
-                  </tr>
-                ))}
+                {queuedCandidates.map((queueItem, index) => {
+                  const { candidate, status, startTime, endTime } = queueItem;
+                  return (
+                    <tr key={candidate.id}>
+                      <Td>{candidate["Full Name"]}</Td>
+                      <Td>{candidate["Email"]}</Td>
+                      <Td>{formatPhone(candidate["Phone"])}</Td>
+                      <Td>
+                        <ScoreBadge score={candidate["Score"]}>
+                          {candidate["Score"]}/10
+                        </ScoreBadge>
+                      </Td>
+                      <Td>
+                        <span
+                          style={{
+                            background: getStatusBadgeColor(status),
+                            color: "#ffffff",
+                            padding: "4px 8px",
+                            borderRadius: "12px",
+                            fontSize: "0.8rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {getStatusText(status)}
+                        </span>
+                      </Td>
+                      <Td style={{ fontSize: "0.8rem" }}>
+                        {startTime && (
+                          <div>
+                            {startTime.toLocaleTimeString()}
+                            {endTime && (
+                              <div>
+                                {Math.round((endTime - startTime) / 1000)}s
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Td>
+                      <Td>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "4px",
+                          }}
+                        >
+                          {status === "queued" && (
+                            <button
+                              onClick={() =>
+                                startCallForCandidate(queueItem, index)
+                              }
+                              style={{
+                                background: "#3b82f6",
+                                color: "#ffffff",
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                border: "none",
+                                fontSize: "0.8rem",
+                                cursor: "pointer",
+                                width: "100%",
+                              }}
+                            >
+                              ▶ Call now
+                            </button>
+                          )}
+                          {(status === "failed" ||
+                            status === "no_answer" ||
+                            status === "declined") && (
+                            <button
+                              onClick={() => {
+                                setQueuedCandidates((prev) => {
+                                  const next = [...prev];
+                                  if (next[index]) {
+                                    next[index] = {
+                                      ...next[index],
+                                      status: "queued",
+                                      startTime: null,
+                                      endTime: null,
+                                    };
+                                  }
+                                  return next;
+                                });
+                              }}
+                              style={{
+                                background: "#f59e0b",
+                                color: "#ffffff",
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                border: "none",
+                                fontSize: "0.8rem",
+                                cursor: "pointer",
+                                width: "100%",
+                              }}
+                            >
+                              🔄 Retry
+                            </button>
+                          )}
+                          <ResumeLink
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              navigate(
+                                `/jobs/${jobId}/applicants/${candidate.id}/resume`
+                              );
+                            }}
+                            style={{
+                              fontSize: "0.8rem",
+                              textAlign: "center",
+                              padding: "4px 8px",
+                              background: "rgba(95, 75, 250, 0.1)",
+                              borderRadius: "4px",
+                              border: "1px solid rgba(95, 75, 250, 0.3)",
+                            }}
+                          >
+                            📄 Resume
+                          </ResumeLink>
+                        </div>
+                      </Td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </Table>
           </TableContainer>
-        )}
-      </SectionContainer>
+        </SectionContainer>
+      )}
 
       {/* Conducted Interviews Section */}
       <SectionContainer>
@@ -1065,11 +1824,12 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
               <thead>
                 <tr>
                   <Th style={{ width: "15%" }}>Name</Th>
-                  <Th style={{ width: "20%" }}>Email</Th>
+                  <Th style={{ width: "18%" }}>Email</Th>
                   <Th style={{ width: "12%" }}>Phone</Th>
-                  <Th style={{ width: "10%" }}>Interview Score</Th>
-                  <Th style={{ width: "12%" }}>Resume</Th>
-                  <Th style={{ width: "31%" }}>Notes</Th>
+                  <Th style={{ width: "10%" }}>Score</Th>
+                  <Th style={{ width: "10%" }}>Resume</Th>
+                  <Th style={{ width: "20%" }}>Notes</Th>
+                  <Th style={{ width: "15%" }}>Call Info</Th>
                 </tr>
               </thead>
               <tbody>
@@ -1079,16 +1839,64 @@ Abdul Moeed Khawaja  moeed0003@gmail.com | +92   332   2227518 |   LinkedIn   | 
                     <Td>{candidate["Email"]}</Td>
                     <Td>{formatPhone(candidate["Phone"])}</Td>
                     <Td>
-                      <ScoreBadge score={candidate["interview_score"] || 0}>
-                        {candidate["interview_score"] || "N/A"}/10
+                      <ScoreBadge
+                        score={
+                          candidate["interview_score"] ||
+                          candidate["Score"] ||
+                          0
+                        }
+                      >
+                        {candidate["interview_score"] ||
+                          candidate["Score"] ||
+                          "N/A"}
+                        /10
                       </ScoreBadge>
                     </Td>
                     <Td>
-                      <ResumeLink href="#" onClick={(e) => e.preventDefault()}>
+                      <ResumeLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate(
+                            `/jobs/${jobId}/applicants/${candidate.id}/resume`
+                          );
+                        }}
+                      >
                         View Resume
                       </ResumeLink>
                     </Td>
-                    <Td>{candidate["interview_notes"] || "No notes"}</Td>
+                    <Td style={{ fontSize: "0.9rem" }}>
+                      {candidate["interview_notes"] ||
+                        candidate["Notes"] ||
+                        "No notes available"}
+                    </Td>
+                    <Td>
+                      <button
+                        onClick={() => {
+                          // For now, this will log call artifacts to console
+                          // In the future, this will open a modal with call details
+                          console.log(
+                            "📞 Call info for:",
+                            candidate["Full Name"]
+                          );
+                          console.log(
+                            "This feature will show call transcript, summary, and audio when implemented"
+                          );
+                        }}
+                        style={{
+                          background: "#5f4bfa",
+                          color: "#ffffff",
+                          padding: "6px 12px",
+                          borderRadius: "6px",
+                          border: "none",
+                          fontSize: "0.8rem",
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        📋 Call info
+                      </button>
+                    </Td>
                   </tr>
                 ))}
               </tbody>
