@@ -1,70 +1,154 @@
-# HR Dashboard
+# Hirvis Demo - AI-Powered HR Dashboard
 
-A minimalist, elegant HR dashboard for managing job posts and candidate resumes. Built with React, React Router, styled-components, and Supabase for authentication and backend.
+A comprehensive HR management system with AI-powered features including automated interviews, candidate management, and job posting capabilities.
 
 ## Features
 
-- **Add New Job**: Create job posts with title, location, salary range, and description.
-- **Active Job Posts**: View all active jobs on the home screen.
-- **Job Details**: See job info, upload candidate CVs (PDF, multiple), and view a table of parsed candidate data.
-- **Candidate Table**: Filter candidates by experience and score. Open resumes directly from the table.
-- **Minimalist Design**: Inspired by [Five Pack Creative](https://fivepackcreative.com/), clean and modern.
-- **User Authentication**: Sign up and log in with email/password, Google, or LinkedIn (OIDC) via Supabase Auth.
-- **User Profile Management**: Edit display name, phone, and profile picture. Avatar and name shown in sidebar.
-- **Social Login**: "Continue with Google" and "Continue with LinkedIn" supported on signup/login pages.
-- **LinkedIn Job Posting (Limited)**: Option to prepare job posts for LinkedIn. Due to persistent LinkedIn API permission issues, actual posting is currently disabled (see below for details).
+- 🤖 **AI-Powered Interviews**: Automated phone interviews using VAPI
+- 📊 **Candidate Management**: Track and manage job applicants
+- 💳 **Subscription System**: Stripe-powered billing and credits
+- 🔗 **LinkedIn Integration**: Post jobs directly to LinkedIn
+- 🎯 **Smart Matching**: AI-powered candidate-job matching
+- 📱 **Responsive Design**: Works on all devices
 
-## Getting Started
+## Tech Stack
+
+- **Frontend**: React 19, Styled Components
+- **Backend**: Express.js, Node.js
+- **Database**: Supabase (PostgreSQL)
+- **AI**: Groq API, VAPI
+- **Payments**: Stripe
+- **Deployment**: Vercel
+
+## Quick Start
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Supabase account
+- Groq API key
+- Stripe account
+- VAPI account
+
+### Local Development
 
 1. **Clone the repository**
-   ```sh
-   git clone https://github.com/amoeed-khawaja/hr-dashboard-automated.git
-   cd hr-dashboard-automated
+   ```bash
+   git clone https://github.com/amoeed-khawaja/hirvis_demo.git
+   cd hirvis_demo
    ```
+
 2. **Install dependencies**
-   ```sh
+   ```bash
    npm install
    ```
+
 3. **Set up environment variables**
-   - Copy `.env.example` to `.env` and fill in your Supabase and API keys.
-   - **Do NOT commit your `.env` file or secrets to version control.**
-4. **Run the app**
-   ```sh
+   ```bash
+   cp .env.example .env
+   ```
+   Fill in your actual API keys and credentials in `.env`
+
+4. **Start the development server**
+   ```bash
    npm start
    ```
-   The app will open at [http://localhost:3000](http://localhost:3000).
+
+5. **Start the backend server** (in another terminal)
+   ```bash
+   npm run server
+   ```
+
+## Deployment to Vercel
+
+### Option 1: One-Click Deploy
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/amoeed-khawaja/hirvis_demo)
+
+### Option 2: Manual Deployment
+
+1. **Install Vercel CLI**
+   ```bash
+   npm i -g vercel
+   ```
+
+2. **Login to Vercel**
+   ```bash
+   vercel login
+   ```
+
+3. **Deploy**
+   ```bash
+   vercel
+   ```
+
+4. **Configure Environment Variables**
+   - Go to your Vercel dashboard
+   - Navigate to your project settings
+   - Add all environment variables from `.env.example`
+
+5. **Redeploy**
+   ```bash
+   vercel --prod
+   ```
+
+## Environment Variables
+
+See `.env.example` for all required environment variables:
+
+- **Supabase**: Database and authentication
+- **Groq**: AI API for smart features
+- **Stripe**: Payment processing
+- **VAPI**: Phone call automation
+- **Client URL**: Your deployed app URL
+
+## API Endpoints
+
+- `POST /api/groq` - AI chat completions
+- `POST /api/create-checkout-session` - Stripe payments
+- `POST /api/webhook` - Stripe webhooks
+- `POST /api/vapi-call` - Initiate phone calls
+- `POST /api/vapi-webhook` - VAPI callbacks
+- `GET /api/check-subscription/:userId` - Check user subscription
+- `POST /api/linkedin-post` - Post jobs to LinkedIn
 
 ## Project Structure
 
-- `src/components/` — Main UI components
-- `src/dummyData.js` — Dummy jobs and candidates
-- `src/theme.js` — Theme variables
-- `src/App.js` — Routing and state
-- `server.js` — Express backend for LinkedIn API proxy
+```
+hirvis_demo/
+├── public/                 # Static assets
+├── src/
+│   ├── components/        # React components
+│   ├── utils/            # Utility functions
+│   └── ...
+├── server.js             # Express.js backend
+├── vercel.json           # Vercel configuration
+├── package.json          # Dependencies and scripts
+└── README.md            # This file
+```
 
-## PDF Resume Parsing
+## Contributing
 
-- Uses [pdfjs-dist](https://www.npmjs.com/package/pdfjs-dist) to extract text from uploaded PDF resumes in the browser.
-- If you need to use a Python or cloud-based parser, see the comments in the code for integration points.
-
-## Social Login & LinkedIn Integration
-
-- **Google Login**: Works out of the box via Supabase Auth.
-- **LinkedIn Login**: Uses LinkedIn OIDC and requests `openid profile email w_member_social` scopes. User must grant permissions on first login.
-- **LinkedIn Job Posting**: When posting a job, users can opt to prepare a LinkedIn post. Due to persistent LinkedIn API permission issues (403 ACCESS_DENIED errors), actual posting to LinkedIn is currently disabled. The system will show the prepared post content instead.
-  - **Note:** LinkedIn's API consistently returns `ACCESS_DENIED` errors for posting endpoints, even with all permissions and products enabled. This is a LinkedIn-side issue affecting many developers. The integration is kept for future use when LinkedIn resolves these API issues.
-
-## Environment Variables & Secret Management
-
-- Store all secrets (API keys, Supabase keys) in a `.env` file.
-- **Never commit your `.env` file or secrets to git.**
-- Add `.env` to your `.gitignore`.
-- If you accidentally commit a secret, remove it from git history and rotate the key immediately.
-
-## Deployment
-
-You can deploy this app to Vercel, Netlify, or any static hosting provider. For GitHub Pages, see [Create React App deployment docs](https://create-react-app.dev/docs/deployment/).
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
 ## License
 
-MIT
+This project is licensed under the MIT License.
+
+## Support
+
+For support and questions:
+- Create an issue on GitHub
+- Check the deployment guide in `VERCEL_DEPLOYMENT.md`
+- Review the setup guides in the project root
+
+## Roadmap
+
+- [ ] Enhanced AI interview questions
+- [ ] Advanced analytics dashboard
+- [ ] Multi-language support
+- [ ] Mobile app
+- [ ] Integration with more job boards
